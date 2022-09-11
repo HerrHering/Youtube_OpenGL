@@ -96,15 +96,29 @@ int main()
 	// Create an array of vertex positions (X, Y, Z)
 	GLfloat vertices[] =
 	{
-		-.5f, -.5f * float(sqrt(3)) / 3, 0.0f,
-		.5f, -.5f * float(sqrt(3)) / 3, 0.0f,
-		0.0f, .5f * float(sqrt(3)) * 2 / 3, 0.0f,
+		-0.5f, -0.5f * float(sqrt(3)) / 3, 0.0f, // Lower left corner
+		0.5f, -0.5f * float(sqrt(3)) / 3, 0.0f, // Lower right corner
+		0.0f, 0.5f * float(sqrt(3)) * 2 / 3, 0.0f, // Upper corner
+		-0.5f / 2, 0.5f * float(sqrt(3)) / 6, 0.0f, // Inner left
+		0.5f / 2, 0.5f * float(sqrt(3)) / 6, 0.0f, // Inner right
+		0.0f, -0.5f * float(sqrt(3)) / 3, 0.0f, // Inner down
+	};
+
+	GLuint indices[] =
+	{
+		0, 3, 5, // Lower left triangle
+		3, 2, 4, // Lower right triangle
+		5, 4, 1 // Upper triangle
 	};
 
 	// Vertex Buffer Object
 	GLuint VBO;
 	// Generates an empty VBO (NUM OBJECTS, ID)
 	glGenBuffers(1, &VBO);
+	// Index buffer = element buffer obj.
+	GLuint EBO;
+	// Create empty indexbuffer
+	glGenBuffers(1, &EBO);
 	// Vertex Array Object
 	// Stores references to VBO-s and tells OpenGL how to interpret them
 	// OpenGL will search for data here
@@ -124,6 +138,11 @@ int main()
 	// (ARRAY TYPE, size of the buffer, data to store, USAGE OF DATA)
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
+	// Select our EBO as an ELEMENT_ARRAY
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+	// Store our indices
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
 	// Define an attribute of vertex shader (for example take a look at the shader files)
 	// This attr. will be targeted by our VBO (BECAUSE IT IS THE ONE BOUND RIGHT NOW)
 	// (Position of vertex attribute, num of data per vertex, DATA TYPE, ???, size of each element, offset to vertices (they arent always in the beginning of the array) )
@@ -131,11 +150,15 @@ int main()
 	// Enables the computer to send data to this attribute (location = 0)
 	glEnableVertexAttribArray(0);
 
-	// FIRST we need to unbind the 
+	// VAO depends on lots of things, so we need to unbind it first
+	// Tell OpenGL to bind "0" as THE vertex array / VAO (0 == nothing is selected)
+	glBindVertexArray(0);
+	// VAo is depending on this VBO so we should unbind it after the VAO
 	// Tell OpenGL to bind "0" as THE buffer (0 == nothing is selected)
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	// Tell OpenGL to bind "0" as THE vertex array (0 == nothing is selected)
-	glBindVertexArray(0);
+	// Unbind our EBO, but only AFTER THE VAO
+	// If we unbind it before the VAO, then the VAO will think he doesn't need this EBO
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 #pragma endregion
 
 
@@ -157,9 +180,10 @@ int main()
 		glUseProgram(shaderProgram);
 		// We tell the computer, which VAO to use
 		glBindVertexArray(VAO);
-		// Tell ObenGL to draw
-		// (PRIMITIV TYPE, where does the indexing start of the vertices, how many vertices to use when drawing ONE primitiv)
-		glDrawArrays(GL_TRIANGLES, 0, 3);
+		// Tell ObenGL to draw a primitive based on it's vertices and indexSet
+		// (PRIMITIVE_TYPE, INDEX_COUNT, INDEX_TYPE, STARTINDEX_OF_INDICES)
+		// We can use this, because we paired up VAO with EBO
+		glDrawElements(GL_TRIANGLES, 9, GL_UNSIGNED_INT, 0);
 
 		// Swaps the front and back buffers
 		// We cleared the back buffer previously by a clearColor, and now we will display it
@@ -174,6 +198,7 @@ int main()
 
 	glDeleteVertexArrays(1, &VAO);
 	glDeleteBuffers(1, &VBO);
+	glDeleteBuffers(1, &EBO);
 	glDeleteProgram(shaderProgram);
 
 	// Destroy the window after we finished using it
