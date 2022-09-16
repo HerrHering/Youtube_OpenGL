@@ -5,11 +5,21 @@ VAO::VAO()
 	glGenVertexArrays(1, &ID);
 }
 
-void VAO::LinkVBO(VBO& VBO, GLuint layout)
+/// <summary>
+/// Links a VBO to a VAO
+/// For further help: BufferConstrucion.PNG
+/// </summary>
+/// <param name="VBO">The VBO we want to link / want to read from</param>
+/// <param name="layout">Target layout in shader</param>
+/// <param name="numComopnents">Number of vertices</param>
+/// <param name="type">Type of data inside buffer (only 1type supported)</param>
+/// <param name="stride">Distance in bytes between vertices</param>
+/// <param name="offset">Offset in bytes inside vertex (a vertex can hold multiple values)</param>
+void VAO::LinkAttrib(VBO& VBO, GLuint layout, GLuint numComopnents, GLenum type, GLsizeiptr stride, void* offset)
 {
 	VBO.Bind();
 
-	glVertexAttribPointer(layout, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+	glVertexAttribPointer(layout, numComopnents, type, GL_FALSE, stride, offset);
 	glEnableVertexAttribArray(layout);
 
 	VBO.Unbind();

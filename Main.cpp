@@ -13,12 +13,13 @@
 #pragma region RANDOM CONSTANT VALUES
 GLfloat vertices[] =
 {
-	-0.5f, -0.5f * float(sqrt(3)) / 3, 0.0f, // Lower left corner
-	0.5f, -0.5f * float(sqrt(3)) / 3, 0.0f, // Lower right corner
-	0.0f, 0.5f * float(sqrt(3)) * 2 / 3, 0.0f, // Upper corner
-	-0.5f / 2, 0.5f * float(sqrt(3)) / 6, 0.0f, // Inner left
-	0.5f / 2, 0.5f * float(sqrt(3)) / 6, 0.0f, // Inner right
-	0.0f, -0.5f * float(sqrt(3)) / 3, 0.0f, // Inner down
+//				COORDINATES						/			COLORS			//
+	-0.5f,		-0.5f * float(sqrt(3)) / 3, 0.0f,	0.8f,	 0.3f,	 0.02f, // Lower left corner
+	0.5f,		-0.5f * float(sqrt(3)) / 3, 0.0f,	0.8f,	 0.3f,	 0.02f, // Lower right corner
+	0.0f,	 0.5f * float(sqrt(3)) * 2 / 3, 0.0f,	1.0f,	 0.6f,	 0.32f, // Upper corner
+	-0.5f / 2,	 0.5f * float(sqrt(3)) / 6, 0.0f,	0.9f,	 0.45f,	 0.17f, // Inner left
+	0.5f / 2,	 0.5f * float(sqrt(3)) / 6, 0.0f,	0.9f,	 0.45f,	 0.17f, // Inner right
+	0.0f,		-0.5f * float(sqrt(3)) / 3, 0.0f,	0.8f,	 0.3f,	 0.02f, // Inner down
 };
 
 GLuint indices[] =
@@ -69,19 +70,30 @@ int main()
 
 #pragma region SET UP SHADERS AND BUFFERS
 	
+	// Create a shaderprogram, that creates a pipeline from a VERTEX and a FRAGMENT shader
 	Shader shaderProgram("default.vert", "default.frag");
 
+	// Create VAO
 	VAO VAO1;
 	VAO1.Bind();
 
+	// Create VertexBuffer and saves it into our VAO
 	VBO VBO1(vertices, sizeof(vertices));
+	// Create IndexBuffer and saves it into our VAO
 	EBO EBO1(indices, sizeof(indices));
 
-	VAO1.LinkVBO(VBO1, 0);
+	// Link the VertexBuffer to our VAO
+	VAO1.LinkAttrib(VBO1, 0, 3, GL_FLOAT, 6 * sizeof(float), (void*)0);
+	VAO1.LinkAttrib(VBO1, 1, 3, GL_FLOAT, 6 * sizeof(float), (void*)(3 * sizeof(float)));
 
+	// Unbind unused resources
 	VAO1.Unbind();
 	VBO1.Unbind();
 	EBO1.Unbind();
+
+	// Gets the reference to an uniform inside the VERTEX shader by name
+	// Can be set after activationg the shaderProgram
+	GLuint uniID = glGetUniformLocation(shaderProgram.ID, "scale");
 
 #pragma endregion
 
@@ -97,6 +109,8 @@ int main()
 
 		// Now is the time that the computer runs our shaderprogram :)
 		shaderProgram.Activate();
+		// AFTER activationg the shaderProgram, set the uniform value
+		glUniform1f(uniID, 1.5f);
 
 		// We tell the computer, which VAO to use
 		VAO1.Bind();

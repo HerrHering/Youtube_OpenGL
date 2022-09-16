@@ -1,6 +1,14 @@
 #version 330 core
+
+// Outputs the final color to the "screen"
+// NAME MATTERS
 out vec4 FragColor;
+
+// Requests a vec3 value called "color" from the previous shader in the pipeline (vertex shader)
+in vec3 color;
+
 void main()
 {
-	FragColor = vec4(0.8f, 0.3f, 0.02f, 1.0);
+	// Set the uotput value of the fragment shader
+	FragColor = vec4(color, 1.0);
 }

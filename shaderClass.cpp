@@ -16,6 +16,30 @@ std::string get_file_contents(const char* fileName)
 	throw (errno);
 }
 
+void Shader::CompileErrors(unsigned int shader, const char* type)
+{
+	GLint hasCompiled;
+	char infoLog[1024];
+	if (type != "PROGRAM")
+	{
+		glGetShaderiv(shader, GL_COMPILE_STATUS, &hasCompiled);
+		if (hasCompiled == GL_FALSE)
+		{
+			glGetShaderInfoLog(shader, 1024, NULL, infoLog);
+			std::cout << "SHADER_COMPILATION_ERROR for:" << type << "\n" << std::endl;
+		}
+	}
+	else
+	{
+		glGetShaderiv(shader, GL_COMPILE_STATUS, &hasCompiled);
+		if (hasCompiled == GL_FALSE)
+		{
+			glGetShaderInfoLog(shader, 1024, NULL, infoLog);
+			std::cout << "SHADER_COMPILATION_ERROR for:" << type << "\n" << std::endl;
+		}
+	}
+}
+
 Shader::Shader(const char* vertexFile, const char* fragmentFile)
 {
 	std::string vertexCode = get_file_contents(vertexFile);
@@ -30,6 +54,7 @@ Shader::Shader(const char* vertexFile, const char* fragmentFile)
 	glShaderSource(vertexShader, 1, &vertexSource, NULL);
 	// Compiles the text it read as a usable shadercode (ID of the shader)
 	glCompileShader(vertexShader);
+	CompileErrors(vertexShader, "VERTEX");
 
 	// We will be able to find our fragment shader by the ID stored in it (by reference)
 	GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
@@ -37,6 +62,7 @@ Shader::Shader(const char* vertexFile, const char* fragmentFile)
 	glShaderSource(fragmentShader, 1, &fragmentSource, NULL);
 	// Compiles the text it read as a usable shadercode (ID of the shader)
 	glCompileShader(fragmentShader);
+	CompileErrors(fragmentShader, "FRAGMENT");
 
 	// Creates a shader program
 	// The computer will run this and we can store our shaders in it
@@ -48,6 +74,7 @@ Shader::Shader(const char* vertexFile, const char* fragmentFile)
 	// Link all the shaders together into the shader program
 	// Create a rendering pipeline for the shader program: FIRST: VERTEX, SECOND: FRAGMENT, etc...
 	glLinkProgram(ID);
+	CompileErrors(ID, "PROGRAM");
 
 	// The compiled shaders are already stored in the shaderprogram so we can delete them
 	glDeleteShader(vertexShader);
