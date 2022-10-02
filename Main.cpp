@@ -15,6 +15,7 @@
 #include "VAO.h"
 #include "VBO.h"
 #include "EBO.h"
+#include "Camera.h"
 
 const unsigned int windowWidth = 800;
 const unsigned int windowHeight = 800;
@@ -116,8 +117,7 @@ int main()
 #pragma endregion
 
 #pragma region RENDERING AND WINDOWHANDLING
-	float rotation = 0.0f;
-	double prevTime = glfwGetTime();
+	Camera camera(windowWidth, windowHeight, glm::vec3(0.0f, 0.0f, 2.0f));
 
 	// We are in 3D, so we have to know what is furher away (we can't see behind objects)
 	glEnable(GL_DEPTH_TEST);
@@ -134,39 +134,8 @@ int main()
 		// Now is the time that the computer runs our shaderprogram :)
 		shaderProgram.Activate();
 
-#pragma region MATRICES
-		double currTime = glfwGetTime();
-		if (currTime - prevTime >= 1.0f / 60.0f)
-		{
-			rotation += 0.5f;
-			prevTime = currTime;
-		}
-
-		// Local to world
-		glm::mat4 model = glm::mat4(1.0f);
-		// World to view
-		glm::mat4 view = glm::mat4(1.0f);
-		// Move the world wrp. to the camera
-		// View to clip (projection stuff)
-		glm::mat4 proj = glm::mat4(1.0f);
-
-		// Rotate the model so it looks cooler
-		model = glm::rotate(model, glm::radians(rotation), glm::vec3(0.0f, 1.0f, 0.0f));
-		// Translate(-cameraPos)
-		view = glm::translate(view, glm::vec3(0, -0.5f, -2));
-		// Set the projection type
-		// (FOV, aspect, nearPlane, farPlane)
-		proj = glm::perspective(glm::radians(45.0f), (float)(windowWidth / windowHeight), 0.1f, 100.0f);
-
-		// Set uniforms
-		GLuint modelLoc = glGetUniformLocation(shaderProgram.ID, "model");
-		// (location, matrixArray? moreThanOne : 1, load transpose?, pointer)
-		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-		GLuint viewLoc = glGetUniformLocation(shaderProgram.ID, "view");
-		glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
-		GLuint projLoc = glGetUniformLocation(shaderProgram.ID, "proj");
-		glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(proj));
-#pragma endregion
+		camera.Inputs(window);
+		camera.Matrix(45.0f, 0.1f, 100.0f, shaderProgram, "camMatrix");
 
 		// Bind texture
 		brickPyramid.Bind();
