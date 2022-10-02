@@ -7,7 +7,7 @@ Texture::Texture(const char* image, GLenum texType, GLenum slot, GLenum format, 
 
 	int widthImg, heightImg, numColCh;
 	// (filename, width, height, color channels, default/automatic color channels)
-	unsigned char* bytes = stbi_load("pop_cat.png", &widthImg, &heightImg, &numColCh, 0);
+	unsigned char* bytes = stbi_load(image, &widthImg, &heightImg, &numColCh, 0);
 
 	// (count, ID)
 	glGenTextures(1, &ID);
