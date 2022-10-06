@@ -1,45 +1,55 @@
 // https://www.youtube.com/watch?v=45MIykWJ-C4&ab_channel=freeCodeCamp.org
 
-#include <iostream>
-#include <glad/glad.h>
-#include <GLFW/glfw3.h>
-// https://raw.githubusercontent.com/nothings/stb/master/stb_image.h
-#include <stb/stb_image.h>
-// https://glm.g-truc.net/0.9.9/index.html
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
-
-#include "Texture.h"
-#include "shaderClass.h"
-#include "VAO.h"
-#include "VBO.h"
-#include "EBO.h"
-#include "Camera.h"
+#include "Mesh.h"
 
 const unsigned int windowWidth = 800;
 const unsigned int windowHeight = 800;
 
 #pragma region RANDOM CONSTANT VALUES
-GLfloat vertices[] =
-{
-//		COORDINATES		/			COLORS			/			UV			//
-	-0.5f,	0.0f,	0.5f,		0.83f,	0.70f,	0.44f,		0.0f,	0.0f,	// Top left
-	-0.5f,	0.0f,	-0.5f,		0.83f,	0.70f,	0.44f,		5.0f,	0.0f,	// Bottom left
-	0.5f,	0.0f,	-0.5f,		0.83f,	0.70f,	0.44f,		0.0f,	0.0f,	// Bottom right
-	0.5f,	0.0f,	0.5f,		0.83f,	0.70f,	0.44f,		5.0f,	0.0f,	// Top right
-	0.0f,	0.8f,	0.0f,		0.92f,	0.86f,	0.76f,		2.5f,	5.0f,	// CSÚCS
+// Vertices coordinates
+Vertex vertices[] =
+{ //               COORDINATES           /            COLORS          /           TexCoord         /       NORMALS         //
+	Vertex{glm::vec3(-1.0f, 0.0f,  1.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(0.0f, 0.0f)},
+	Vertex{glm::vec3(-1.0f, 0.0f, -1.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(0.0f, 1.0f)},
+	Vertex{glm::vec3(1.0f, 0.0f, -1.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(1.0f, 1.0f)},
+	Vertex{glm::vec3(1.0f, 0.0f,  1.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(1.0f, 0.0f)}
 };
 
+// Indices for vertices order
 GLuint indices[] =
 {
 	0, 1, 2,
-	0, 2, 3,
-	0, 1, 4,
-	1, 2, 4,
-	2, 3, 4,
-	3, 0, 4,
+	0, 2, 3
 };
+
+Vertex lightVertices[] =
+{ //     COORDINATES     //
+	Vertex{glm::vec3(-0.1f, -0.1f,  0.1f)},
+	Vertex{glm::vec3(-0.1f, -0.1f, -0.1f)},
+	Vertex{glm::vec3(0.1f, -0.1f, -0.1f)},
+	Vertex{glm::vec3(0.1f, -0.1f,  0.1f)},
+	Vertex{glm::vec3(-0.1f,  0.1f,  0.1f)},
+	Vertex{glm::vec3(-0.1f,  0.1f, -0.1f)},
+	Vertex{glm::vec3(0.1f,  0.1f, -0.1f)},
+	Vertex{glm::vec3(0.1f,  0.1f,  0.1f)}
+};
+
+GLuint lightIndices[] =
+{
+	0, 1, 2,
+	0, 2, 3,
+	0, 4, 7,
+	0, 7, 3,
+	3, 7, 6,
+	3, 6, 2,
+	2, 6, 5,
+	2, 5, 1,
+	1, 5, 4,
+	1, 4, 0,
+	4, 5, 6,
+	4, 6, 7
+};
+
 #pragma endregion
 
 
@@ -80,40 +90,57 @@ int main()
 	glViewport(0, 0, windowWidth, windowHeight);
 #pragma endregion
 
-#pragma region SET UP SHADERS AND BUFFERS
-	
+	// MESH
+	Texture textures[]
+	{
+		Texture("planks.png", "diffuse", 0, GL_RGBA, GL_UNSIGNED_BYTE),
+
+		Texture("planksSpec.png", "specular", 1, GL_RED, GL_UNSIGNED_BYTE),
+	};
+
 	// Create a shaderprogram, that creates a pipeline from a VERTEX and a FRAGMENT shader
-	Shader shaderProgram("default.vert", "default.frag");
+	Shader meshShader("default.vert", "default.frag");
 
-	// Create VAO
-	VAO VAO1;
-	VAO1.Bind();
+	std::vector<Vertex> verts(vertices, vertices + sizeof(vertices) / sizeof(Vertex));
+	std::vector<GLuint> ind(indices, indices + sizeof(indices) / sizeof(GLuint));
+	std::vector<Texture> tex(textures, textures + sizeof(textures) / sizeof(Texture));
 
-	// Create VertexBuffer and saves it into our VAO
-	VBO VBO1(vertices, sizeof(vertices));
-	// Create IndexBuffer and saves it into our VAO
-	EBO EBO1(indices, sizeof(indices));
+	// LIGHT
+	Mesh floor(verts, ind, tex);
 
-	// Link the VertexBuffer to our VAO
-	// POSITION * 3f
-	VAO1.LinkAttrib(VBO1, 0, 3, GL_FLOAT, 8 * sizeof(float), (void*)0);
-	// COLOR * 3f
-	VAO1.LinkAttrib(VBO1, 1, 3, GL_FLOAT, 8 * sizeof(float), (void*)(3 * sizeof(float)));
-	// UV * 2f
-	VAO1.LinkAttrib(VBO1, 2, 2, GL_FLOAT, 8 * sizeof(float), (void*)(6 * sizeof(float)));
+	Shader lightShader("light.vert", "light.frag");
 
-	// Unbind unused resources
-	VAO1.Unbind();
-	VBO1.Unbind();
-	EBO1.Unbind();
+	std::vector<Vertex> lightVerts(lightVertices, lightVertices + sizeof(lightVertices) / sizeof(Vertex));
+	std::vector<GLuint> lightInd(lightIndices, lightIndices + sizeof(lightIndices) / sizeof(GLuint));
 
-	// TEXTURE
-	// (image name, texture type, unit in the "texture boundle", image pixelformat, image pixel dataformat)
-	Texture brickPyramid("pop_cat.png", GL_TEXTURE_2D, GL_TEXTURE0, GL_RGBA, GL_UNSIGNED_BYTE);
+	// The texture parameter is jut a placeholder
+	Mesh light(lightVerts, lightInd, tex);
 
-	// Set Texture
-	// (program, uniform name, texture index in boundle)
-	brickPyramid.texUnit(shaderProgram, "tex0", 0);
+#pragma region SET UP SCENE
+
+	// SCENE DATA
+	glm::vec4 lightColor = glm::vec4(1, 1, 1,	 1);
+
+	glm::vec3 lightPos = glm::vec3(0.5f, 0.5f, 0.5f);
+	glm::mat4 lightModel = glm::mat4(1.0f);
+	lightModel = glm::translate(lightModel, lightPos);
+
+	glm::vec3 pyramidPos = glm::vec3(0.0f, 0.0f, 0.0f);
+	glm::mat4 pyramidModel = glm::mat4(1.0f);
+	pyramidModel = glm::translate(pyramidModel, pyramidPos);
+
+	// SET SHADERS
+	lightShader.Activate();
+	glUniformMatrix4fv(glGetUniformLocation(lightShader.ID, "model"), 1, GL_FALSE, glm::value_ptr(lightModel));
+	glUniform4f(glGetUniformLocation(lightShader.ID, "lightColor"), lightColor.x, lightColor.y, lightColor.z, lightColor.w);
+
+	meshShader.Activate();
+	glUniformMatrix4fv(glGetUniformLocation(meshShader.ID, "model"), 1, GL_FALSE, glm::value_ptr(pyramidModel));
+	glUniform4f(glGetUniformLocation(meshShader.ID, "lightColor"), lightColor.x, lightColor.y, lightColor.z, lightColor.w);
+	glUniform3f(glGetUniformLocation(meshShader.ID, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
+
+#pragma endregion
+
 #pragma endregion
 
 #pragma region RENDERING AND WINDOWHANDLING
@@ -131,21 +158,13 @@ int main()
 		// Clear depth buffer
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		// Now is the time that the computer runs our shaderprogram :)
-		shaderProgram.Activate();
-
+		// Camera inputs: moving, rotating...
 		camera.Inputs(window);
-		camera.Matrix(45.0f, 0.1f, 100.0f, shaderProgram, "camMatrix");
+		// updates the cameraMatrix
+		camera.updateMatrix(45.0f, 0.1f, 100.0f);
 
-		// Bind texture
-		brickPyramid.Bind();
-
-		// We tell the computer, which VAO to use
-		VAO1.Bind();
-
-		// Draw triangles
-		// (PRIMITIVE_TYPE, INDEX_COUNT, INDEX_TYPE, STARTINDEX_OF_INDICES)
-		glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(int), GL_UNSIGNED_INT, 0);
+		floor.Draw(meshShader, camera);
+		light.Draw(lightShader, camera);
 
 		// Swaps the front and back buffers
 		glfwSwapBuffers(window);
@@ -156,11 +175,8 @@ int main()
 #pragma endregion
 
 #pragma region DISMANTLE USED OBJECTS
-	VAO1.Delete();
-	VBO1.Delete();
-	EBO1.Delete();
-	brickPyramid.Delete();
-	shaderProgram.Delete();
+	meshShader.Delete();
+	lightShader.Delete();
 
 	// Destroy the window after we finished using it
 	glfwDestroyWindow(window);
