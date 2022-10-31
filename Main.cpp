@@ -69,6 +69,13 @@ int main()
 	// Default depthbuffer usage: if something has a smaller depth value than the current, it will replace it
 	glDepthFunc(GL_LESS);
 
+	// ONLY draws specified side of triangle
+	glEnable(GL_CULL_FACE);
+	// Draw fornt face
+	glCullFace(GL_FRONT);
+	// Definition of front face: counter clockwise indexing
+	glFrontFace(GL_CCW);
+
 	// Enable THE stencil buffer: 8bit
 	glEnable(GL_STENCIL_TEST);
 	// Results if: (stencil fails), (depth fails), (depth passes)
@@ -79,15 +86,44 @@ int main()
 	Model modelGround("models/ground/scene.gltf");
 	Model modelTrees("models/trees/scene.gltf");
 
+	// FPS COUNTER
+	double prevTime = 0.0;
+	double crntTime = 0.0;
+	double timeDiff;
+	// How many frames in a certain amount of time
+	unsigned int frameCounter = 0;
+	const double frameMeasurementPerSecond = 30;
+
+	// IGnores vsync if possible
+	// glfwSwapInterval(0);
+
 	// Processes all incoming events related to our window
 	while (!glfwWindowShouldClose(window))
 	{
+		// The FPS counter runs on a fixed timeinterval
+		crntTime = glfwGetTime();
+		timeDiff = crntTime - prevTime;
+		frameCounter++;
+		if (timeDiff >= 1.0 / frameMeasurementPerSecond)
+		{
+			std::string FPS = std::to_string(frameCounter / timeDiff);
+			std::string frameDuration = std::to_string(timeDiff / frameCounter * 1000);
+			std::string newTitle = "YoutubeOpenGL - " + FPS + "FPS / " + frameDuration + "ms";
+			glfwSetWindowTitle(window, newTitle.c_str());
+			frameCounter = 0;
+			prevTime = crntTime;
+
+			// Use it here if vsync is not enabled
+			// camera.Inputs(window);
+		}
+
 		// Tell GL to clear back buffer with specific color
 		glClearColor(0.85f, 0.85f, 0.90f, 1.0f);
 		// Clears COLOR_BUFFER with the previously set clearColor
 		// Clear depth buffer
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
+		// Use it here if vsync is enabled
 		// Camera inputs: moving, rotating...
 		camera.Inputs(window);
 		// updates the cameraMatrix
@@ -119,7 +155,7 @@ int main()
 
 		outlineShader.Activate();
 		// The outlining value is a scaling "outwards the surface of the obj" (we inflate the original obj)
-		glUniform1f(glGetUniformLocation(outlineShader.ID, "outlining"), 0.08f);
+		glUniform1f(glGetUniformLocation(outlineShader.ID, "outlining"), 0.04f);
 		// Re-draw the same object, except using the outlining shader
 		// Because of the stencil condition, only the part will be drawn, where the original and upscaled obj dont ovelap
 		//modelGround.Draw(outlineShader, camera);
