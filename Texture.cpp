@@ -1,6 +1,6 @@
 #include "Texture.h"
 
-Texture::Texture(const char* image, const char* texType, GLuint slot, GLenum format, GLenum pixelType)
+Texture::Texture(const char* image, const char* texType, GLuint slot)
 {
 	type = texType;
 	stbi_set_flip_vertically_on_load(true);
@@ -30,7 +30,25 @@ Texture::Texture(const char* image, const char* texType, GLuint slot, GLenum for
 
 	// (type, 0, texture color, width, height, 0, image color, pixel datatype, pixel data)
 	// RGB = Jpeg, RGBA = png
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, widthImg, heightImg, 0, format, pixelType, bytes);
+	// PNG
+	if (numColCh == 4)
+	{
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, widthImg, heightImg, 0, GL_RGBA, GL_UNSIGNED_BYTE, bytes);
+	}
+	// JPEG
+	else if (numColCh == 3)
+	{
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, widthImg, heightImg, 0, GL_RGB, GL_UNSIGNED_BYTE, bytes);
+	}
+	// GRAYSCALED
+	else if (numColCh == 1)
+	{
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, widthImg, heightImg, 0, GL_RED, GL_UNSIGNED_BYTE, bytes);
+	}
+	else
+		throw std::invalid_argument("Automatic Texture type recognition failed!");
+
+
 	// Lower resolution copy of the original image
 	glGenerateMipmap(GL_TEXTURE_2D);
 
