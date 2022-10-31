@@ -1,11 +1,26 @@
  // https://www.youtube.com/watch?v=45MIykWJ-C4&ab_channel=freeCodeCamp.org
 
-// Episode: https://youtu.be/ngF9LWWxhd0
+// Episode: https://youtu.be/crOfyWiWxmc
 
 #include "Model.h"
 
+// Proceduraly draw windows
 const unsigned int windowWidth = 800;
 const unsigned int windowHeight = 800;
+
+const unsigned int numWindows = 100;
+glm::vec3 positionsWin[numWindows];
+float rotationsWin[numWindows];
+
+// Order windows by distance to camera
+unsigned int windowOrderDraw[numWindows];
+float windowDistanceCamera[numWindows];
+
+int compare(const void* a, const void* b)
+{
+	double diff = windowDistanceCamera[*(int*)b] - windowDistanceCamera[*(int*)a];
+	return (0 < diff) - (diff < 0);
+}
 
 int main()
 {
@@ -52,6 +67,10 @@ int main()
 
 	Shader outlineShader("outline.vert", "outline.frag");
 
+	Shader grassShader("default.vert", "grass.frag");
+
+	Shader windowsShader("default.vert", "windows.frag");
+
 	glm::vec4 lightColor = glm::vec4(1, 1, 1,	 1);
 	glm::vec3 lightPos = glm::vec3(0.5f, 0.5f, 0.5f);
 	glm::mat4 lightModel = glm::mat4(1.0f);
@@ -60,6 +79,9 @@ int main()
 	meshShader.Activate();
 	glUniform4f(glGetUniformLocation(meshShader.ID, "lightColor"), lightColor.x, lightColor.y, lightColor.z, lightColor.w);
 	glUniform3f(glGetUniformLocation(meshShader.ID, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
+	grassShader.Activate();
+	glUniform4f(glGetUniformLocation(grassShader.ID, "lightColor"), lightColor.x, lightColor.y, lightColor.z, lightColor.w);
+	glUniform3f(glGetUniformLocation(grassShader.ID, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
 
 #pragma endregion
 
@@ -81,10 +103,16 @@ int main()
 	// Results if: (stencil fails), (depth fails), (depth passes)
 	glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
 
+	// Blending: we put layers of colors onto eachother and interpolate between them based on alpha value
+	// (alpha value source for the newly computed color), (alpha value for the color in the colorbuffer)
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
 	Camera camera(windowWidth, windowHeight, glm::vec3(0.0f, 0.0f, 2.0f));
 
 	Model modelGround("models/ground/scene.gltf");
-	Model modelTrees("models/trees/scene.gltf");
+	//Model modelTrees("models/trees/scene.gltf");
+	Model modelGrass("models/grass/scene.gltf");
+	Model modelWindow("models/windows/scene.gltf");
 
 	// FPS COUNTER
 	double prevTime = 0.0;
@@ -94,12 +122,25 @@ int main()
 	unsigned int frameCounter = 0;
 	const double frameMeasurementPerSecond = 30;
 
-	// IGnores vsync if possible
-	// glfwSwapInterval(0);
+
+	// Random windows, as transparency test
+	for (unsigned int i = 0; i < numWindows; ++i)
+	{
+		positionsWin[i] = glm::vec3
+		(
+			-15.0f + static_cast<float>(rand()) / (static_cast<float> (RAND_MAX / (15.0f - (- 15.0f)))),
+			1.0f + static_cast<float>(rand()) / (static_cast<float> (RAND_MAX / (4.0f - 1.0f))),
+			-15.0f + static_cast<float>(rand()) / (static_cast<float> (RAND_MAX / (15.0f - (- 15.0f))))
+		);
+		rotationsWin[i] = static_cast<float>(rand()) / (static_cast<float>(RAND_MAX / 1.0f));
+		windowOrderDraw[i] = i;
+	}
 
 	// Processes all incoming events related to our window
 	while (!glfwWindowShouldClose(window))
 	{
+#pragma region FPS counter
+
 		// The FPS counter runs on a fixed timeinterval
 		crntTime = glfwGetTime();
 		timeDiff = crntTime - prevTime;
@@ -112,10 +153,9 @@ int main()
 			glfwSetWindowTitle(window, newTitle.c_str());
 			frameCounter = 0;
 			prevTime = crntTime;
-
-			// Use it here if vsync is not enabled
-			// camera.Inputs(window);
 		}
+
+#pragma endregion
 
 		// Tell GL to clear back buffer with specific color
 		glClearColor(0.85f, 0.85f, 0.90f, 1.0f);
@@ -123,47 +163,69 @@ int main()
 		// Clear depth buffer
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
-		// Use it here if vsync is enabled
 		// Camera inputs: moving, rotating...
 		camera.Inputs(window);
 		// updates the cameraMatrix
 		camera.updateMatrix(45.0f, 0.1f, 100.0f);
 
-		// Draw models
+#pragma region Draw Outlined Models
 
-		// glStencilFunc:
-		// Condition to pass the test (also, GL_REPLACE will set the stencil value to REF if it passes)
-		// (condition to pass), (ref), (mask = which bits are we using)
-		// Which bits are we using: all=0xFF, nothing=0x00						(stencil & mask)
-		// 
-		// glStencilMask:
-		// Which bits are we using? 0xFF:all, 0x00:nothing
-		// We can only change the bits in usage
+		//// glStencilFunc:
+		//// Condition to pass the test (also, GL_REPLACE will set the stencil value to REF if it passes)
+		//// (condition to pass), (ref), (mask = which bits are we using)
+		//// Which bits are we using: all=0xFF, nothing=0x00						(stencil & mask)
+		//// 
+		//// glStencilMask:
+		//// Which bits are we using? 0xFF:all, 0x00:nothing
+		//// We can only change the bits in usage
 
+		//// OUTLINE DRAW
+
+		//// The stencil test will always pass, and ref = 1 -> the stencilbuff will be 1 where the obj is on the screen
+		//glStencilFunc(GL_ALWAYS, 1, 0xFF);
+		//// We use 8bits
+		//glStencilMask(0xFF);
+		//modelTrees.Draw(meshShader, camera);
+
+		//// Only passes if stencil != ref, and ref = 1 -> where our original obj was
+		//glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
+		//// No more writing to the stencilbuff
+		//glStencilMask(0x00);
+
+		//outlineShader.Activate();
+		//// The outlining value is a scaling "outwards the surface of the obj" (we inflate the original obj)
+		//glUniform1f(glGetUniformLocation(outlineShader.ID, "outlining"), 0.04f);
+		//// Re-draw the same object, except using the outlining shader
+		//// Because of the stencil condition, only the part will be drawn, where the original and upscaled obj dont ovelap
+		////modelGround.Draw(outlineShader, camera);
+		//modelTrees.Draw(outlineShader, camera);
+
+		//// RESET STENCIL BUFFER
+		//glStencilMask(0xFF);
+		//glStencilFunc(GL_ALWAYS, 0, 0xFF);
+#pragma endregion
+
+		// NORMAL DRAW
+
+		// Draws ground
 		modelGround.Draw(meshShader, camera);
-
-		// The stencil test will always pass, and ref = 1 -> the stencilbuff will be 1 where the obj is on the screen
-		glStencilFunc(GL_ALWAYS, 1, 0xFF);
-		// We use 8bits
-		glStencilMask(0xFF);
-		modelTrees.Draw(meshShader, camera);
-
-		// Only passes if stencil != ref, and ref = 1 -> where our original obj was
-		glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
-		// No more writing to the stencilbuff
-		glStencilMask(0x00);
-
-		outlineShader.Activate();
-		// The outlining value is a scaling "outwards the surface of the obj" (we inflate the original obj)
-		glUniform1f(glGetUniformLocation(outlineShader.ID, "outlining"), 0.04f);
-		// Re-draw the same object, except using the outlining shader
-		// Because of the stencil condition, only the part will be drawn, where the original and upscaled obj dont ovelap
-		//modelGround.Draw(outlineShader, camera);
-		modelTrees.Draw(outlineShader, camera);
-
-		// RESET STENCIL BUFFER
-		glStencilMask(0xFF);
-		glStencilFunc(GL_ALWAYS, 0, 0xFF);
+		// Draws grass
+		glDisable(GL_CULL_FACE);
+		modelGrass.Draw(grassShader, camera);
+		// Windows are semi-transparent
+		glEnable(GL_BLEND);
+		// Order windows so they blend in the right order
+		for (unsigned int i = 0; i < numWindows; ++i)
+		{
+			windowDistanceCamera[i] = glm::length(camera.Position - positionsWin[i]);
+		}
+		qsort(windowOrderDraw, numWindows, sizeof(unsigned int), compare);
+		for (unsigned int i = 0; i < numWindows; ++i)
+		{
+			modelWindow.Draw(windowsShader, camera, positionsWin[windowOrderDraw[i]], glm::quat(1.0f, 0.0f, rotationsWin[windowOrderDraw[i]], 0.0f));
+		}
+		glDisable(GL_BLEND);
+		glEnable(GL_CULL_FACE);
 
 		// Swaps the front and back buffers
 		glfwSwapBuffers(window);
@@ -175,6 +237,8 @@ int main()
 
 #pragma region DISMANTLE USED OBJECTS
 	meshShader.Delete();
+	outlineShader.Delete();
+	grassShader.Delete();
 
 	// Destroy the window after we finished using it
 	glfwDestroyWindow(window);
