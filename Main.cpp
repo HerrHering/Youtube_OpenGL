@@ -1,5 +1,7 @@
  // https://www.youtube.com/watch?v=45MIykWJ-C4&ab_channel=freeCodeCamp.org
 
+// Episode: https://youtu.be/3xGKu4T4SCU
+
 #include "Model.h"
 
 const unsigned int windowWidth = 800;
@@ -59,21 +61,22 @@ int main()
 
 #pragma endregion
 
-#pragma endregion
-
 #pragma region RENDERING AND WINDOWHANDLING
 	// We are in 3D, so we have to know what is furher away (we can't see behind objects)
 	glEnable(GL_DEPTH_TEST);
+	// Default depthbuffer usage: if something has a smaller depth value than the current, it will replace it
+	glDepthFunc(GL_LESS);
 
 	Camera camera(windowWidth, windowHeight, glm::vec3(0.0f, 0.0f, 2.0f));
 
-	Model model("models/sword/scene.gltf");
+	Model modelGround("models/ground/scene.gltf");
+	Model modelTrees("models/trees/scene.gltf");
 
 	// Processes all incoming events related to our window
 	while (!glfwWindowShouldClose(window))
 	{
 		// Tell GL to clear back buffer with specific color
-		glClearColor(.07f, .13f, .17f, 1.0f);
+		glClearColor(0.85f, 0.85f, 0.90f, 1.0f);
 		// Clears COLOR_BUFFER with the previously set clearColor
 		// Clear depth buffer
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -83,7 +86,8 @@ int main()
 		// updates the cameraMatrix
 		camera.updateMatrix(45.0f, 0.1f, 100.0f);
 
-		model.Draw(meshShader, camera);
+		modelGround.Draw(meshShader, camera);
+		modelTrees.Draw(meshShader, camera);
 
 		// Swaps the front and back buffers
 		glfwSwapBuffers(window);

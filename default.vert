@@ -21,7 +21,10 @@ uniform mat4 scale;
 void main()
 {
 	// negative rotation 'couse glm and opengl uses clokwise and counterclockwise rot directions
-	crntPos = vec3(model * translation * -rotation * scale * vec4(aPos, 1.0f));
+	// crntPos = vec3(model * translation * -rotation * scale * vec4(aPos, 1.0f));
+
+	// Dont have to invert rotation direction
+	crntPos = vec3(model * translation * rotation * scale * vec4(aPos, 1.0f));
 	Normal = aNormal;
 	color = aColor;
 	// Rotate texture coordinates by 90degrees FOR GOD KNWOS WHY

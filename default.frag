@@ -27,7 +27,7 @@ vec4 PointLight()
 	float a = 1.0f; // Light reach
 	float b = 0.04f; // How fast light dies off
 	float inten = 1.0f / (a * dist * dist + b * dist + 1.0f);
-
+	
 	float ambient = 0.2f;
 
 	vec3 normal = normalize(Normal);
@@ -95,12 +95,43 @@ vec4 SpotLight()
 	return (texture(diffuse0, texCoord) * (ambient + diffuse * inten) + specular * inten) * lightColor;
 }
 
+float near = 0.1f;
+float far = 100.0f;
+
+// Originally the depth value is between 0 and 1, and is not linear (so we dont have to use high precision far away, where we cant see)
+// This will return the distance of the fragment from the near plane
+float linearizeDepth(float depth)
+{
+	return (2.0 * near * far) / (far + near - (depth * 2.0 - 1.0) * (far - near));
+}
+
+// steepness: how fase are we going from 0 to 1
+// offset: when are we halfway done (when is our depth value 50%)
+float logisticDepth(float depth, float steepness = 0.5f, float offset = 5.0f)
+{
+	float zVal = linearizeDepth(depth);
+
+	return (1.0 / (1.0 + exp(-steepness * (zVal - offset))));
+}
+
 void main()
 {
+	// Set the output value of the fragment shader
 	
-
-	// Set the uotput value of the fragment shader
+	// LIGHTING MODELS
 	//FragColor = SpotLight();
-	FragColor = DirecLight();
+	//FragColor = DirecLight();
 	//FragColor = PointLight();
+
+	// TEST DEPTHBUFFER
+
+	// Normalized, linear distance to the near plane
+	// float fragDstNear = linearizeDepth(gl_FragCoord.z) / far;
+	// FragColor = vec4(vec3(fragDstNear), 1.0f);
+
+	// Normalized, logistic
+	float depth = logisticDepth(gl_FragCoord.z, 0.3f, 15f);
+	// The far away object blend into the backround wrp to the distance
+	// Interpolation between background and light color:
+	FragColor = DirecLight() * (1.0 - depth) + vec4(depth * vec3(0.85f, 0.85f, 0.90f), 1.0f);
 }
