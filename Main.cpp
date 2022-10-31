@@ -1,6 +1,6 @@
  // https://www.youtube.com/watch?v=45MIykWJ-C4&ab_channel=freeCodeCamp.org
 
-// Episode: https://youtu.be/3xGKu4T4SCU
+// Episode: https://youtu.be/ngF9LWWxhd0
 
 #include "Model.h"
 
@@ -50,6 +50,8 @@ int main()
 
 	Shader meshShader("default.vert", "default.frag");
 
+	Shader outlineShader("outline.vert", "outline.frag");
+
 	glm::vec4 lightColor = glm::vec4(1, 1, 1,	 1);
 	glm::vec3 lightPos = glm::vec3(0.5f, 0.5f, 0.5f);
 	glm::mat4 lightModel = glm::mat4(1.0f);
@@ -67,6 +69,11 @@ int main()
 	// Default depthbuffer usage: if something has a smaller depth value than the current, it will replace it
 	glDepthFunc(GL_LESS);
 
+	// Enable THE stencil buffer: 8bit
+	glEnable(GL_STENCIL_TEST);
+	// Results if: (stencil fails), (depth fails), (depth passes)
+	glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
+
 	Camera camera(windowWidth, windowHeight, glm::vec3(0.0f, 0.0f, 2.0f));
 
 	Model modelGround("models/ground/scene.gltf");
@@ -79,15 +86,48 @@ int main()
 		glClearColor(0.85f, 0.85f, 0.90f, 1.0f);
 		// Clears COLOR_BUFFER with the previously set clearColor
 		// Clear depth buffer
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
 		// Camera inputs: moving, rotating...
 		camera.Inputs(window);
 		// updates the cameraMatrix
 		camera.updateMatrix(45.0f, 0.1f, 100.0f);
 
+		// Draw models
+
+		// glStencilFunc:
+		// Condition to pass the test (also, GL_REPLACE will set the stencil value to REF if it passes)
+		// (condition to pass), (ref), (mask = which bits are we using)
+		// Which bits are we using: all=0xFF, nothing=0x00						(stencil & mask)
+		// 
+		// glStencilMask:
+		// Which bits are we using? 0xFF:all, 0x00:nothing
+		// We can only change the bits in usage
+
 		modelGround.Draw(meshShader, camera);
+
+		// The stencil test will always pass, and ref = 1 -> the stencilbuff will be 1 where the obj is on the screen
+		glStencilFunc(GL_ALWAYS, 1, 0xFF);
+		// We use 8bits
+		glStencilMask(0xFF);
 		modelTrees.Draw(meshShader, camera);
+
+		// Only passes if stencil != ref, and ref = 1 -> where our original obj was
+		glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
+		// No more writing to the stencilbuff
+		glStencilMask(0x00);
+
+		outlineShader.Activate();
+		// The outlining value is a scaling "outwards the surface of the obj" (we inflate the original obj)
+		glUniform1f(glGetUniformLocation(outlineShader.ID, "outlining"), 0.08f);
+		// Re-draw the same object, except using the outlining shader
+		// Because of the stencil condition, only the part will be drawn, where the original and upscaled obj dont ovelap
+		//modelGround.Draw(outlineShader, camera);
+		modelTrees.Draw(outlineShader, camera);
+
+		// RESET STENCIL BUFFER
+		glStencilMask(0xFF);
+		glStencilFunc(GL_ALWAYS, 0, 0xFF);
 
 		// Swaps the front and back buffers
 		glfwSwapBuffers(window);
