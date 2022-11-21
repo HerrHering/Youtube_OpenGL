@@ -120,7 +120,7 @@ int main()
 	double timeDiff;
 	// How many frames in a certain amount of time
 	unsigned int frameCounter = 0;
-	const double frameMeasurementPerSecond = 30;
+	const double frameMeasurementPerSecond = 60;
 
 
 	// Random windows, as transparency test
@@ -135,6 +135,10 @@ int main()
 		rotationsWin[i] = static_cast<float>(rand()) / (static_cast<float>(RAND_MAX / 1.0f));
 		windowOrderDraw[i] = i;
 	}
+
+	//// TURN OFFF!!!
+	//glfwMakeContextCurrent(window);
+	//glfwSwapInterval(0);
 
 	// Processes all incoming events related to our window
 	while (!glfwWindowShouldClose(window))
@@ -153,6 +157,12 @@ int main()
 			glfwSetWindowTitle(window, newTitle.c_str());
 			frameCounter = 0;
 			prevTime = crntTime;
+
+			//// REMOVE
+			//// Camera inputs: moving, rotating...
+			//camera.Inputs(window);
+			//// updates the cameraMatrix
+			//camera.updateMatrix(45.0f, 0.1f, 100.0f);
 		}
 
 #pragma endregion
@@ -163,6 +173,7 @@ int main()
 		// Clear depth buffer
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
+		// UNCOMMENT
 		// Camera inputs: moving, rotating...
 		camera.Inputs(window);
 		// updates the cameraMatrix
