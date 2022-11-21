@@ -120,7 +120,7 @@ void main()
 	
 	// LIGHTING MODELS
 	//FragColor = SpotLight();
-	//FragColor = DirecLight();
+	FragColor = DirecLight();
 	//FragColor = PointLight();
 
 	// TEST DEPTHBUFFER
@@ -129,9 +129,9 @@ void main()
 	// float fragDstNear = linearizeDepth(gl_FragCoord.z) / far;
 	// FragColor = vec4(vec3(fragDstNear), 1.0f);
 
-	// Normalized, logistic
-	float depth = logisticDepth(gl_FragCoord.z, 0.2f, 20f);
-	// The far away object blend into the backround wrp to the distance
-	// Interpolation between background and light color:
-	FragColor = DirecLight() * (1.0 - depth) + vec4(depth * vec3(0.85f, 0.85f, 0.90f), 1.0f);
+//	// Normalized, logistic
+//	float depth = logisticDepth(gl_FragCoord.z, 0.2f, 20f);
+//	// The far away object blend into the backround wrp to the distance
+//	// Interpolation between background and light color:
+//	FragColor = DirecLight() * (1.0 - depth) + vec4(depth * vec3(0.85f, 0.85f, 0.90f), 1.0f);
 }

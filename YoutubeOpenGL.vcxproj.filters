@@ -62,22 +62,10 @@
     <None Include="default.frag">
       <Filter>Resource Files\Shaders</Filter>
     </None>
-    <None Include="light.frag">
+    <None Include="framebuffer.vert">
       <Filter>Resource Files\Shaders</Filter>
     </None>
-    <None Include="light.vert">
-      <Filter>Resource Files\Shaders</Filter>
-    </None>
-    <None Include="outline.frag">
-      <Filter>Resource Files\Shaders</Filter>
-    </None>
-    <None Include="outline.vert">
-      <Filter>Resource Files\Shaders</Filter>
-    </None>
-    <None Include="grass.frag">
-      <Filter>Resource Files\Shaders</Filter>
-    </None>
-    <None Include="windows.frag">
+    <None Include="framebuffer.frag">
       <Filter>Resource Files\Shaders</Filter>
     </None>
   </ItemGroup>

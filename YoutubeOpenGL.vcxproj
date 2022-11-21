@@ -160,12 +160,8 @@
   <ItemGroup>
     <None Include="default.frag" />
     <None Include="default.vert" />
-    <None Include="grass.frag" />
-    <None Include="light.frag" />
-    <None Include="light.vert" />
-    <None Include="outline.frag" />
-    <None Include="outline.vert" />
-    <None Include="windows.frag" />
+    <None Include="framebuffer.frag" />
+    <None Include="framebuffer.vert" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Camera.h" />

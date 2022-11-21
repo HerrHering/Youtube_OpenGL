@@ -8,19 +8,17 @@
 const unsigned int windowWidth = 800;
 const unsigned int windowHeight = 800;
 
-const unsigned int numWindows = 100;
-glm::vec3 positionsWin[numWindows];
-float rotationsWin[numWindows];
-
-// Order windows by distance to camera
-unsigned int windowOrderDraw[numWindows];
-float windowDistanceCamera[numWindows];
-
-int compare(const void* a, const void* b)
+float rectangleVertices[] =
 {
-	double diff = windowDistanceCamera[*(int*)b] - windowDistanceCamera[*(int*)a];
-	return (0 < diff) - (diff < 0);
-}
+	// Coords    // texCoords
+	 1.0f, -1.0f,  1.0f, 0.0f,
+	-1.0f, -1.0f,  0.0f, 0.0f,
+	-1.0f,  1.0f,  0.0f, 1.0f,
+
+	 1.0f,  1.0f,  1.0f, 1.0f,
+	 1.0f, -1.0f,  1.0f, 0.0f,
+	-1.0f,  1.0f,  0.0f, 1.0f
+};
 
 int main()
 {
@@ -65,11 +63,7 @@ int main()
 
 	Shader meshShader("default.vert", "default.frag");
 
-	Shader outlineShader("outline.vert", "outline.frag");
-
-	Shader grassShader("default.vert", "grass.frag");
-
-	Shader windowsShader("default.vert", "windows.frag");
+	Shader frameBufferShader("framebuffer.vert", "framebuffer.frag");
 
 	glm::vec4 lightColor = glm::vec4(1, 1, 1,	 1);
 	glm::vec3 lightPos = glm::vec3(0.5f, 0.5f, 0.5f);
@@ -79,9 +73,9 @@ int main()
 	meshShader.Activate();
 	glUniform4f(glGetUniformLocation(meshShader.ID, "lightColor"), lightColor.x, lightColor.y, lightColor.z, lightColor.w);
 	glUniform3f(glGetUniformLocation(meshShader.ID, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
-	grassShader.Activate();
-	glUniform4f(glGetUniformLocation(grassShader.ID, "lightColor"), lightColor.x, lightColor.y, lightColor.z, lightColor.w);
-	glUniform3f(glGetUniformLocation(grassShader.ID, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
+	frameBufferShader.Activate();
+	glUniform1i(glGetUniformLocation(frameBufferShader.ID, "screenTexture"), 0);
+
 
 #pragma endregion
 
@@ -109,10 +103,22 @@ int main()
 
 	Camera camera(windowWidth, windowHeight, glm::vec3(0.0f, 0.0f, 2.0f));
 
-	Model modelGround("models/ground/scene.gltf");
-	//Model modelTrees("models/trees/scene.gltf");
-	Model modelGrass("models/grass/scene.gltf");
-	Model modelWindow("models/windows/scene.gltf");
+	// Load in models
+	Model model("models/crow/scene.gltf");
+
+
+	unsigned int rectVAO, rectVBO;
+	glGenVertexArrays(1, &rectVAO);
+	glGenBuffers(1, &rectVBO);
+	glBindVertexArray(rectVAO);
+	glBindBuffer(GL_ARRAY_BUFFER, rectVBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(rectangleVertices), &rectangleVertices, GL_STATIC_DRAW);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+
+
 
 	// FPS COUNTER
 	double prevTime = 0.0;
@@ -122,23 +128,38 @@ int main()
 	unsigned int frameCounter = 0;
 	const double frameMeasurementPerSecond = 60;
 
+	// Create framebuffer object
+	// This is an object that contains the colorBuffer, depthBuffer and stencilBuffer
+	unsigned int FBO;
+	glGenFramebuffers(1, &FBO);
+	glBindFramebuffer(GL_FRAMEBUFFER, FBO);
 
-	// Random windows, as transparency test
-	for (unsigned int i = 0; i < numWindows; ++i)
-	{
-		positionsWin[i] = glm::vec3
-		(
-			-15.0f + static_cast<float>(rand()) / (static_cast<float> (RAND_MAX / (15.0f - (- 15.0f)))),
-			1.0f + static_cast<float>(rand()) / (static_cast<float> (RAND_MAX / (4.0f - 1.0f))),
-			-15.0f + static_cast<float>(rand()) / (static_cast<float> (RAND_MAX / (15.0f - (- 15.0f))))
-		);
-		rotationsWin[i] = static_cast<float>(rand()) / (static_cast<float>(RAND_MAX / 1.0f));
-		windowOrderDraw[i] = i;
-	}
+	// Create test texture
+	// We attach a texture to the FBO so it can draw into it, and we can process it with our custom postp. shader
+	unsigned int frameBufferTexture;
+	glGenTextures(1, &frameBufferTexture);
+	glBindTexture(GL_TEXTURE_2D, frameBufferTexture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, windowWidth, windowHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, frameBufferTexture, 0);
 
-	//// TURN OFFF!!!
-	//glfwMakeContextCurrent(window);
-	//glfwSwapInterval(0);
+	// Render buffer object
+	// This is a buffer attached to the FBO, that cannot be modified with an extra custom shader
+	// In our case this is good for the depthBuffer because we dont want to use it in our sahder 
+	unsigned int RBO;
+	glGenRenderbuffers(1, &RBO);
+	glBindRenderbuffer(GL_RENDERBUFFER, RBO);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, windowWidth, windowHeight);
+	// Attach renderbuffer to framebuffer
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, RBO);
+
+	// Error checking
+	auto fboStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+	if (fboStatus != GL_FRAMEBUFFER_COMPLETE)
+		std::cout << "Framebuffer error: " << fboStatus << std::endl;
 
 	// Processes all incoming events related to our window
 	while (!glfwWindowShouldClose(window))
@@ -157,86 +178,38 @@ int main()
 			glfwSetWindowTitle(window, newTitle.c_str());
 			frameCounter = 0;
 			prevTime = crntTime;
-
-			//// REMOVE
-			//// Camera inputs: moving, rotating...
-			//camera.Inputs(window);
-			//// updates the cameraMatrix
-			//camera.updateMatrix(45.0f, 0.1f, 100.0f);
 		}
 
 #pragma endregion
 
+		// Tells OpenGL that we want it to save the buffers' values into this framebuffer
+		glBindFramebuffer(GL_FRAMEBUFFER, FBO);
+
 		// Tell GL to clear back buffer with specific color
-		glClearColor(0.85f, 0.85f, 0.90f, 1.0f);
+		glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
 		// Clears COLOR_BUFFER with the previously set clearColor
 		// Clear depth buffer
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+		glEnable(GL_DEPTH_TEST);
 
-		// UNCOMMENT
 		// Camera inputs: moving, rotating...
 		camera.Inputs(window);
 		// updates the cameraMatrix
 		camera.updateMatrix(45.0f, 0.1f, 100.0f);
 
-#pragma region Draw Outlined Models
+		// DRAW
+		model.Draw(meshShader, camera);
 
-		//// glStencilFunc:
-		//// Condition to pass the test (also, GL_REPLACE will set the stencil value to REF if it passes)
-		//// (condition to pass), (ref), (mask = which bits are we using)
-		//// Which bits are we using: all=0xFF, nothing=0x00						(stencil & mask)
-		//// 
-		//// glStencilMask:
-		//// Which bits are we using? 0xFF:all, 0x00:nothing
-		//// We can only change the bits in usage
-
-		//// OUTLINE DRAW
-
-		//// The stencil test will always pass, and ref = 1 -> the stencilbuff will be 1 where the obj is on the screen
-		//glStencilFunc(GL_ALWAYS, 1, 0xFF);
-		//// We use 8bits
-		//glStencilMask(0xFF);
-		//modelTrees.Draw(meshShader, camera);
-
-		//// Only passes if stencil != ref, and ref = 1 -> where our original obj was
-		//glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
-		//// No more writing to the stencilbuff
-		//glStencilMask(0x00);
-
-		//outlineShader.Activate();
-		//// The outlining value is a scaling "outwards the surface of the obj" (we inflate the original obj)
-		//glUniform1f(glGetUniformLocation(outlineShader.ID, "outlining"), 0.04f);
-		//// Re-draw the same object, except using the outlining shader
-		//// Because of the stencil condition, only the part will be drawn, where the original and upscaled obj dont ovelap
-		////modelGround.Draw(outlineShader, camera);
-		//modelTrees.Draw(outlineShader, camera);
-
-		//// RESET STENCIL BUFFER
-		//glStencilMask(0xFF);
-		//glStencilFunc(GL_ALWAYS, 0, 0xFF);
-#pragma endregion
-
-		// NORMAL DRAW
-
-		// Draws ground
-		modelGround.Draw(meshShader, camera);
-		// Draws grass
-		glDisable(GL_CULL_FACE);
-		modelGrass.Draw(grassShader, camera);
-		// Windows are semi-transparent
-		glEnable(GL_BLEND);
-		// Order windows so they blend in the right order
-		for (unsigned int i = 0; i < numWindows; ++i)
-		{
-			windowDistanceCamera[i] = glm::length(camera.Position - positionsWin[i]);
-		}
-		qsort(windowOrderDraw, numWindows, sizeof(unsigned int), compare);
-		for (unsigned int i = 0; i < numWindows; ++i)
-		{
-			modelWindow.Draw(windowsShader, camera, positionsWin[windowOrderDraw[i]], glm::quat(1.0f, 0.0f, rotationsWin[windowOrderDraw[i]], 0.0f));
-		}
-		glDisable(GL_BLEND);
-		glEnable(GL_CULL_FACE);
+		// After drawing the scene, we wont include anything into our frameBuffer after this
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		// Activate out custom shader
+		frameBufferShader.Activate();
+		// We want to draw a rectangle that cowers the whole screen
+		glBindVertexArray(rectVAO);
+		// We dont want to change the depth values, only read them
+		glDisable(GL_DEPTH_TEST);
+		glBindTexture(GL_TEXTURE_2D, frameBufferTexture);
+		glDrawArrays(GL_TRIANGLES, 0, 6);
 
 		// Swaps the front and back buffers
 		glfwSwapBuffers(window);
@@ -248,8 +221,7 @@ int main()
 
 #pragma region DISMANTLE USED OBJECTS
 	meshShader.Delete();
-	outlineShader.Delete();
-	grassShader.Delete();
+	frameBufferShader.Delete();
 
 	// Destroy the window after we finished using it
 	glfwDestroyWindow(window);
