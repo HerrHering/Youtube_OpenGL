@@ -162,6 +162,8 @@
     <None Include="default.vert" />
     <None Include="framebuffer.frag" />
     <None Include="framebuffer.vert" />
+    <None Include="skybox.frag" />
+    <None Include="skybox.vert" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Camera.h" />
@@ -175,10 +177,16 @@
     <ClInclude Include="VBO.h" />
   </ItemGroup>
   <ItemGroup>
-    <Image Include="brick.png" />
-    <Image Include="planks.png" />
-    <Image Include="planksSpec.png" />
-    <Image Include="pop_cat.png" />
+    <Image Include="Textures\brick.png" />
+    <Image Include="Textures\planks.png" />
+    <Image Include="Textures\planksSpec.png" />
+    <Image Include="Textures\pop_cat.png" />
+    <Image Include="Textures\Skybox\back.jpg" />
+    <Image Include="Textures\Skybox\bottom.jpg" />
+    <Image Include="Textures\Skybox\front.jpg" />
+    <Image Include="Textures\Skybox\left.jpg" />
+    <Image Include="Textures\Skybox\right.jpg" />
+    <Image Include="Textures\Skybox\top.jpg" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

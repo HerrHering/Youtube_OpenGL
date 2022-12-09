@@ -1,5 +1,8 @@
 #include "VAO.h"
 
+/// <summary>
+/// A VAO is an object that wraps vertices and vertex indices together to form a mesh later on
+/// </summary>
 VAO::VAO()
 {
 	glGenVertexArrays(1, &ID);

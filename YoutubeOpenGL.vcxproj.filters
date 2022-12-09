@@ -19,6 +19,9 @@
     <Filter Include="Resource Files\Textures">
       <UniqueIdentifier>{a62523f6-fffa-4360-8e7d-d638d12169a0}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Resource Files\Textures\Skybox">
+      <UniqueIdentifier>{082f500e-3edb-4a67-b970-03954be36055}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
@@ -68,6 +71,12 @@
     <None Include="framebuffer.frag">
       <Filter>Resource Files\Shaders</Filter>
     </None>
+    <None Include="skybox.vert">
+      <Filter>Resource Files\Shaders</Filter>
+    </None>
+    <None Include="skybox.frag">
+      <Filter>Resource Files\Shaders</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="shaderClass.h">
@@ -99,17 +108,35 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <Image Include="pop_cat.png">
+    <Image Include="Textures\pop_cat.png">
       <Filter>Resource Files\Textures</Filter>
     </Image>
-    <Image Include="brick.png">
+    <Image Include="Textures\planksSpec.png">
       <Filter>Resource Files\Textures</Filter>
     </Image>
-    <Image Include="planks.png">
+    <Image Include="Textures\planks.png">
       <Filter>Resource Files\Textures</Filter>
     </Image>
-    <Image Include="planksSpec.png">
+    <Image Include="Textures\brick.png">
       <Filter>Resource Files\Textures</Filter>
+    </Image>
+    <Image Include="Textures\Skybox\left.jpg">
+      <Filter>Resource Files\Textures\Skybox</Filter>
+    </Image>
+    <Image Include="Textures\Skybox\right.jpg">
+      <Filter>Resource Files\Textures\Skybox</Filter>
+    </Image>
+    <Image Include="Textures\Skybox\top.jpg">
+      <Filter>Resource Files\Textures\Skybox</Filter>
+    </Image>
+    <Image Include="Textures\Skybox\back.jpg">
+      <Filter>Resource Files\Textures\Skybox</Filter>
+    </Image>
+    <Image Include="Textures\Skybox\bottom.jpg">
+      <Filter>Resource Files\Textures\Skybox</Filter>
+    </Image>
+    <Image Include="Textures\Skybox\front.jpg">
+      <Filter>Resource Files\Textures\Skybox</Filter>
     </Image>
   </ItemGroup>
 </Project>
