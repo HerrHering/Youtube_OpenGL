@@ -1,7 +1,7 @@
  // https://www.youtube.com/watch?v=45MIykWJ-C4&ab_channel=freeCodeCamp.org
 
 // Episode: https://youtu.be/crOfyWiWxmc
-// Time: 2:43
+// Time: 4:00
 
 #include "Model.h"
 
@@ -85,7 +85,9 @@ int main()
 
 #pragma region SET UP SCENE
 
-	Shader meshShader("default.vert", "default.frag");
+	Shader meshShader("default.vert", "explosion.geom", "default.frag");
+	// Effect: show normals of triangles
+	Shader normalsShader("default.vert", "normals.geom", "normals.frag");
 	Shader skyboxShader("skybox.vert", "skybox.frag");
 
 	glm::vec4 lightColor = glm::vec4(1, 1, 1,	 1);
@@ -108,7 +110,7 @@ int main()
 	Camera camera(windowWidth, windowHeight, glm::vec3(0.0f, 0.0f, 2.0f));
 
 	// Load in models
-	Model model("models/crow/scene.gltf");
+	Model model("models/statue/scene.gltf");
 
 	// VAO is a wrapper
 	unsigned int skyboxVAO, skyboxVBO, skyboxEBO;
@@ -242,13 +244,15 @@ int main()
 		// updates the cameraMatrix
 		camera.updateMatrix(45.0f, 0.1f, 100.0f);
 
+		// We want to sync the time with the model
+		model.syncTime = true;
 		// DRAW
 		model.Draw(meshShader, camera);
+		model.Draw(normalsShader, camera); // Show visually the direction of normals of the mesh
 
 		// DRAW SKYBOX
 		// Since the cubemap will always have a depth of 1.0, we need that equal sign so it doesn't get discarded
 		glDepthFunc(GL_LEQUAL);
-		//glDisable(GL_CULL_FACE);
 
 		skyboxShader.Activate();
 		glm::mat4 view = glm::mat4(1.0f);
@@ -265,7 +269,6 @@ int main()
 		glDrawElements(GL_TRIANGLES, 3 * 2 * 6, GL_UNSIGNED_INT, 0); // We only have one texture, that is the 0-th in the unit
 		glBindVertexArray(0); // Unbind cubemap
 		
-		//glEnable(GL_CULL_FACE);
 		glDepthFunc(GL_LESS); // Reset depth buffer func
 
 

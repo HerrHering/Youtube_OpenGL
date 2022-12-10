@@ -159,9 +159,13 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="default.frag" />
+    <None Include="default.geom" />
     <None Include="default.vert" />
+    <None Include="explosion.geom" />
     <None Include="framebuffer.frag" />
     <None Include="framebuffer.vert" />
+    <None Include="normals.frag" />
+    <None Include="normals.geom" />
     <None Include="skybox.frag" />
     <None Include="skybox.vert" />
   </ItemGroup>

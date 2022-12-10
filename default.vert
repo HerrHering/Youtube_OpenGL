@@ -6,10 +6,21 @@ layout (location = 1) in vec3 aNormal;
 layout (location = 2) in vec3 aColor;
 layout (location = 3) in vec2 aTex;
 
-out vec3 crntPos;
-out vec3 Normal;
-out vec3 color;
-out vec2 texCoord;
+/*
+	We replace thiese outputs with our custom datastructure
+
+	out vec3 crntPos;
+	out vec3 Normal;
+	out vec3 color;
+	out vec2 texCoord;
+*/
+out DATA // Custom datastructure
+{
+	vec3 Normal;
+	vec3 color;
+	vec2 texCoord;
+	mat4 projection;
+} data_out;
 
 uniform mat4 camMatrix;
 
@@ -20,15 +31,14 @@ uniform mat4 scale;
 
 void main()
 {
-	// negative rotation 'couse glm and opengl uses clokwise and counterclockwise rot directions
-	// crntPos = vec3(model * translation * -rotation * scale * vec4(aPos, 1.0f));
-
-	// Dont have to invert rotation direction
-	crntPos = vec3(model * translation * rotation * scale * vec4(aPos, 1.0f));
-	Normal = aNormal;
-	color = aColor;
-	// Rotate texture coordinates by 90degrees FOR GOD KNWOS WHY
-	texCoord = mat2(0, -1, 1, 0) * aTex;
-
-	gl_Position = camMatrix * vec4(crntPos, 1.0f);
+	// Set the data that we want to use in the !Geometry Shader!
+	// Default datastructure -------------------------------
+	gl_Position = model * translation * rotation * scale * vec4(aPos, 1.0f);
+	// -----------------------------------------------------
+	// Custom datastructure --------------------------------
+	data_out.Normal = aNormal;
+	data_out.color = aColor;
+	data_out.texCoord = mat2(0, -1, 1, 0) * aTex; // Rotate texture coordinates by 90degrees FOR GOD KNWOS WHY
+	data_out.projection = camMatrix;
+	// -----------------------------------------------------
 }

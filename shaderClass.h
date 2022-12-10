@@ -10,6 +10,9 @@
 
 std::string get_file_contents(const char* fileName);
 
+/// <summary>
+/// Vertex -> Geometry (optional) -> Fragment
+/// </summary>
 class Shader
 {
 private:
@@ -17,6 +20,7 @@ private:
 public:
 	GLuint ID;
 	Shader(const char* vertexFile, const char* fragmentFile);
+	Shader(const char* vertexFile, const char* fragmentFile, const char* geometryFile);
 
 	void Activate();
 	void Delete();

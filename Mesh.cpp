@@ -30,7 +30,10 @@ Mesh::Mesh(std::vector<Vertex>& vertices, std::vector<GLuint>& indices, std::vec
 	EBO.Unbind();
 }
 
-void Mesh::Draw(Shader& shader, Camera& camera,
+void Mesh::Draw
+(
+	Shader& shader,
+	Camera& camera,
 	glm::mat4 matrix,
 	glm::vec3 translation,
 	glm::quat rotation,
@@ -79,6 +82,12 @@ void Mesh::Draw(Shader& shader, Camera& camera,
 	glUniformMatrix4fv(glGetUniformLocation(shader.ID, "rotation"), 1, GL_FALSE, glm::value_ptr(rot));
 	glUniformMatrix4fv(glGetUniformLocation(shader.ID, "scale"), 1, GL_FALSE, glm::value_ptr(sca));
 	glUniformMatrix4fv(glGetUniformLocation(shader.ID, "model"), 1, GL_FALSE, glm::value_ptr(matrix));
+
+	// Custom data, not part of the mesh
+	if (this->syncTime)
+	{
+		glUniform1f(glGetUniformLocation(shader.ID, "_Time"), glfwGetTime());
+	}
 
 	glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
 }
