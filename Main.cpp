@@ -5,7 +5,20 @@
 const unsigned int width = 800;
 const unsigned int height = 800;
 
+// How many times do we want to sample per pixel (MSAA support)
+unsigned int samples = 8;
 
+float rectangleVertices[] =
+{
+	//  Coords   // texCoords
+	 1.0f, -1.0f,  1.0f, 0.0f,
+	-1.0f, -1.0f,  0.0f, 0.0f,
+	-1.0f,  1.0f,  0.0f, 1.0f,
+
+	 1.0f,  1.0f,  1.0f, 1.0f,
+	 1.0f, -1.0f,  1.0f, 0.0f,
+	-1.0f,  1.0f,  0.0f, 1.0f
+};
 
 float skyboxVertices[] =
 {
@@ -56,6 +69,7 @@ int main()
 	// In this case we are using OpenGL 3.3
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+	//glfwWindowHint(GLFW_SAMPLES, samples); // Multisampling pixels (MSAA) // If you don't have a frame buffer
 	// Tell GLFW we are using the CORE profile
 	// So that means we only have the modern functions
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
@@ -85,7 +99,8 @@ int main()
 	// Generates Shader objects
 	Shader shaderProgram("default.vert", "default.geom", "default.frag");
 	Shader skyboxShader("skybox.vert", "skybox.frag");
-	Shader asteroidShader("asteriod.vert", "default.frag"); // Will be instanced
+
+	Shader framebufferProgram("framebuffer.vert", "framebuffer.frag"); // We will multisample (MSAA)
 
 	// Take care of all the light related things
 	glm::vec4 lightColor = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
@@ -96,9 +111,9 @@ int main()
 	glUniform3f(glGetUniformLocation(shaderProgram.ID, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
 	skyboxShader.Activate();
 	glUniform1i(glGetUniformLocation(skyboxShader.ID, "skybox"), 0);
-	asteroidShader.Activate();
-	glUniform4f(glGetUniformLocation(asteroidShader.ID, "lightColor"), lightColor.x, lightColor.y, lightColor.z, lightColor.w);
-	glUniform3f(glGetUniformLocation(asteroidShader.ID, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
+	framebufferProgram.Activate();
+	// We will only have one texture, so we use the 0-th in the batch
+	glUniform1i(glGetUniformLocation(framebufferProgram.ID, "screenTexture"), 0);
 
 
 
@@ -106,6 +121,9 @@ int main()
 
 	// Enables the Depth Buffer
 	glEnable(GL_DEPTH_TEST);
+
+	// Activate multisampling (MSAA)
+	glEnable(GL_MULTISAMPLE);
 
 	// Enables Cull Facing
 	glEnable(GL_CULL_FACE);
@@ -118,7 +136,7 @@ int main()
 	Camera camera(width, height, glm::vec3(0.0f, 0.0f, 2.0f));
 
 	// Load in models
-	Model jupiter("models/jupiter/scene.gltf");
+	Model model("models/crow/scene.gltf");
 
 
 
@@ -132,6 +150,78 @@ int main()
 	// Use this to disable VSync (not advized)
 	//glfwSwapInterval(0);
 
+
+#pragma region FBO
+
+	// Prepare framebuffer rectangle VBO and VAO
+	unsigned int rectVAO, rectVBO;
+	glGenVertexArrays(1, &rectVAO);
+	glGenBuffers(1, &rectVBO);
+	glBindVertexArray(rectVAO);
+	glBindBuffer(GL_ARRAY_BUFFER, rectVBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(rectangleVertices), &rectangleVertices, GL_STATIC_DRAW);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+
+	// Create Frame Buffer Object (FBO)
+	unsigned int FBO;
+	glGenFramebuffers(1, &FBO);
+	glBindFramebuffer(GL_FRAMEBUFFER, FBO);
+
+	// Framebuffer texture
+	unsigned int framebufferTexture;
+	glGenTextures(1, &framebufferTexture);
+	glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, framebufferTexture);
+	glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, samples, GL_RGB, width, height, GL_TRUE); // True/False: Do we want the samples in the same place inside pixel?
+	glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); // Prevents edge bleeding
+	glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); // Prevents edge bleeding
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, framebufferTexture, 0);
+
+	// Create Render Buffer Object
+	unsigned int RBO;
+	glGenRenderbuffers(1, &RBO);
+	glBindRenderbuffer(GL_RENDERBUFFER, RBO);
+	glRenderbufferStorageMultisample(GL_RENDERBUFFER, samples, GL_DEPTH24_STENCIL8, width, height);
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, RBO);
+
+
+	// Error checking framebuffer
+	auto fboStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+	if (fboStatus != GL_FRAMEBUFFER_COMPLETE)
+		std::cout << "Framebuffer error: " << fboStatus << std::endl;
+
+#pragma endregion
+
+#pragma region postprocessing FBO
+
+	// Create Frame Buffer Object
+	unsigned int postProcessingFBO;
+	glGenFramebuffers(1, &postProcessingFBO);
+	glBindFramebuffer(GL_FRAMEBUFFER, postProcessingFBO);
+
+	// Create Framebuffer Texture
+	unsigned int postProcessingTexture;
+	glGenTextures(1, &postProcessingTexture);
+	glBindTexture(GL_TEXTURE_2D, postProcessingTexture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, postProcessingTexture, 0);
+
+	// Error checking framebuffer
+	fboStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+	if (fboStatus != GL_FRAMEBUFFER_COMPLETE)
+		std::cout << "Post-Processing Framebuffer error: " << fboStatus << std::endl;
+
+#pragma endregion
+
+#pragma region Skybox
 
 	// Create VAO, VBO, and EBO for the skybox
 	unsigned int skyboxVAO, skyboxVBO, skyboxEBO;
@@ -153,12 +243,12 @@ int main()
 	// All the faces of the cubemap (make sure they are in this exact order)
 	std::string facesCubemap[6] =
 	{
-		"Textures/Skybox_Stars/right.png",
-		"Textures/Skybox_Stars/left.png",
-		"Textures/Skybox_Stars/top.png",
-		"Textures/Skybox_Stars/bottom.png",
-		"Textures/Skybox_Stars/front.png",
-		"Textures/Skybox_Stars/back.png"
+		"Textures/Skybox_Day/right.png",
+		"Textures/Skybox_Day/left.png",
+		"Textures/Skybox_Day/top.png",
+		"Textures/Skybox_Day/bottom.png",
+		"Textures/Skybox_Day/front.png",
+		"Textures/Skybox_Day/back.png"
 	};
 
 	// Creates the cubemap texture object
@@ -203,61 +293,7 @@ int main()
 		}
 	}
 
-
-
-	// The number of asteroids to be created
-	const unsigned int number = 2000;
-	// Radius of circle around which asteroids orbit
-	float radius = 75.0f;
-	// How much ateroids deviate from the radius
-	float radiusDeviation = 25.0f;
-
-	std::vector<glm::mat4> instanceMatrices;
-
-	for (unsigned int i = 0; i < number; i++)
-	{
-		// Generates x and y for the function x^2 + y^2 = radius^2 which is a circle
-		float x = randf();
-		float finalRadius = radius + randf() * radiusDeviation;
-		float y = ((rand() % 2) * 2 - 1) * sqrt(1.0f - x * x);
-
-		glm::vec3 tempTranslation;
-		glm::quat tempRotation;
-		glm::vec3 tempScale;
-
-		// Makes the random distribution more even
-		if (randf() > 0.5f)
-		{
-			// Generates a translation near a circle of radius "radius"
-			tempTranslation = glm::vec3(y * finalRadius, randf(), x * finalRadius);
-		}
-		else
-		{
-			// Generates a translation near a circle of radius "radius"
-			tempTranslation = glm::vec3(x * finalRadius, randf(), y * finalRadius);
-		}
-
-		// Generates random rotations
-		tempRotation = glm::quat(1.0f, randf(), randf(), randf());
-		// Generates random scales
-		tempScale = 0.1f * glm::vec3(randf(), randf(), randf());
-
-		// Calculate transformation matrices for the current instance
-		glm::mat4 trans = glm::mat4(1.0f);
-		glm::mat4 rot = glm::mat4(1.0f);
-		glm::mat4 scale = glm::mat4(1.0f);
-
-		// Construct data
-		trans = glm::translate(trans, tempTranslation);
-		rot = glm::mat4_cast(tempRotation);
-		scale = glm::scale(scale, tempScale);
-
-		// Add final transformation to the list
-		instanceMatrices.push_back(trans * rot * scale);
-	}
-
-	// Construct asteroids using the instance transformations
-	Model asteroid("models/asteroid/scene.gltf", number, instanceMatrices);
+#pragma endregion
 
 	// Main while loop
 	while (!glfwWindowShouldClose(window))
@@ -267,6 +303,7 @@ int main()
 		timeDiff = crntTime - prevTime;
 		counter++;
 
+		// FPS counter
 		if (timeDiff >= 1.0 / 30.0)
 		{
 			// Creates new title
@@ -283,21 +320,25 @@ int main()
 			//camera.Inputs(window);
 		}
 
+
+		// Bind the custom framebuffer
+		glBindFramebuffer(GL_FRAMEBUFFER, FBO); // This will store all our information: color, depth, stencil...
 		// Specify the color of the background
 		glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
 		// Clean the back buffer and depth buffer
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		// Enable depth testing
+		glEnable(GL_DEPTH_TEST);
 
 		// Handles camera inputs (delete this if you have disabled VSync)
 		camera.Inputs(window);
 		// Updates and exports the camera matrix to the Vertex Shader
 		camera.updateMatrix(45.0f, 0.1f, 1000.0f);
 
+#pragma region DRAW
 
-		// Draw jupiter
-		jupiter.Draw(shaderProgram, camera);
-		// Draw the asteroids
-		asteroid.Draw(asteroidShader, camera); // Instanced draw
+		// Draw model
+		model.Draw(shaderProgram, camera);
 
 		// Since the cubemap will always have a depth of 1.0, we need that equal sign so it doesn't get discarded
 		glDepthFunc(GL_LEQUAL);
@@ -323,6 +364,23 @@ int main()
 		// Switch back to the normal depth function
 		glDepthFunc(GL_LESS);
 
+#pragma endregion
+
+		// Copy all the colors from the FBO into postProcessingFBO
+		glBindFramebuffer(GL_READ_FRAMEBUFFER, FBO); // Multy sampling
+		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, postProcessingFBO); // Post processing
+		// From READ to WRITE
+		// While copying from FRBO to postProcessingFBO, GL_NEAREST will be applied, thus the pixels will blend with the neighbours
+		glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+
+		// Unbind the custom framebuffer
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		// Draw the framebuffer rectangle
+		framebufferProgram.Activate();
+		glBindVertexArray(rectVAO);
+		glDisable(GL_DEPTH_TEST); // Prevents framebuffer rectangle from being discarded (the pixel is behind something, but we want to write into it, so we dont want to discard it!)
+		glBindTexture(GL_TEXTURE_2D, postProcessingTexture);
+		glDrawArrays(GL_TRIANGLES, 0, 6);
 
 		// Swap the back buffer with the front buffer
 		glfwSwapBuffers(window);

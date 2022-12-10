@@ -25,10 +25,19 @@ float kernel[9] = float[]
 
 void main()
 {
-    // Cumulative variable, summarizes the sorrounding pixelvalues by the kernel
-    vec3 color = vec3(0.0f);
-    // We look up all surrounding values
-    for(int i = 0; i < 9; i++)
-        color += vec3(texture(screenTexture, texCoords.st + offsets[i])) * kernel[i];
-    FragColor = vec4(color, 1.0f);
+    if (texCoords.x < 0.0f)
+    {
+        //Blurring
+        // Cumulative variable, summarizes the sorrounding pixelvalues by the kernel
+        vec3 color = vec3(0.0f);
+        // We look up all surrounding values
+        for(int i = 0; i < 9; i++)
+            color += vec3(texture(screenTexture, texCoords.st + offsets[i])) * kernel[i];
+        FragColor = vec4(color, 1.0f);
+    }
+    else
+    {
+        // Do nothing
+        FragColor = texture(screenTexture, texCoords);
+    }
 }
