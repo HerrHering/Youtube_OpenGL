@@ -18,7 +18,19 @@ public:
 
 	VAO VAO;
 
-	Mesh(std::vector <Vertex>& vertices, std::vector <GLuint>& indices, std::vector <Texture>& textures);
+	/// <summary>
+	/// Number of instances of THIS mesh
+	/// </summary>
+	unsigned int instancing;
+
+	Mesh
+	(
+		std::vector <Vertex>& vertices,
+		std::vector <GLuint>& indices,
+		std::vector <Texture>& textures,
+		unsigned int instancing = 1,
+		std::vector<glm::mat4> instanceMatrices = {}
+	);
 
 	bool syncTime = false;
 

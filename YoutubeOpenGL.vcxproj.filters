@@ -22,6 +22,12 @@
     <Filter Include="Resource Files\Textures\Skybox">
       <UniqueIdentifier>{082f500e-3edb-4a67-b970-03954be36055}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Resource Files\Textures\Skybox\Day">
+      <UniqueIdentifier>{44f514e5-4885-48ec-a196-e1447a21a149}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Resource Files\Textures\Skybox\Night">
+      <UniqueIdentifier>{aa9801d4-02ce-4a1a-81ee-0317baccc806}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
@@ -89,6 +95,9 @@
     <None Include="normals.geom">
       <Filter>Resource Files\Shaders</Filter>
     </None>
+    <None Include="asteriod.vert">
+      <Filter>Resource Files\Shaders</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="shaderClass.h">
@@ -132,23 +141,41 @@
     <Image Include="Textures\brick.png">
       <Filter>Resource Files\Textures</Filter>
     </Image>
-    <Image Include="Textures\Skybox\left.jpg">
-      <Filter>Resource Files\Textures\Skybox</Filter>
+    <Image Include="Textures\Skybox_Stars\front.png">
+      <Filter>Resource Files\Textures\Skybox\Night</Filter>
     </Image>
-    <Image Include="Textures\Skybox\right.jpg">
-      <Filter>Resource Files\Textures\Skybox</Filter>
+    <Image Include="Textures\Skybox_Stars\left.png">
+      <Filter>Resource Files\Textures\Skybox\Night</Filter>
     </Image>
-    <Image Include="Textures\Skybox\top.jpg">
-      <Filter>Resource Files\Textures\Skybox</Filter>
+    <Image Include="Textures\Skybox_Stars\right.png">
+      <Filter>Resource Files\Textures\Skybox\Night</Filter>
     </Image>
-    <Image Include="Textures\Skybox\back.jpg">
-      <Filter>Resource Files\Textures\Skybox</Filter>
+    <Image Include="Textures\Skybox_Stars\top.png">
+      <Filter>Resource Files\Textures\Skybox\Night</Filter>
     </Image>
-    <Image Include="Textures\Skybox\bottom.jpg">
-      <Filter>Resource Files\Textures\Skybox</Filter>
+    <Image Include="Textures\Skybox_Stars\back.png">
+      <Filter>Resource Files\Textures\Skybox\Night</Filter>
     </Image>
-    <Image Include="Textures\Skybox\front.jpg">
-      <Filter>Resource Files\Textures\Skybox</Filter>
+    <Image Include="Textures\Skybox_Stars\bottom.png">
+      <Filter>Resource Files\Textures\Skybox\Night</Filter>
+    </Image>
+    <Image Include="Textures\Skybox_Cloudy\front.jpg">
+      <Filter>Resource Files\Textures\Skybox\Day</Filter>
+    </Image>
+    <Image Include="Textures\Skybox_Cloudy\left.jpg">
+      <Filter>Resource Files\Textures\Skybox\Day</Filter>
+    </Image>
+    <Image Include="Textures\Skybox_Cloudy\right.jpg">
+      <Filter>Resource Files\Textures\Skybox\Day</Filter>
+    </Image>
+    <Image Include="Textures\Skybox_Cloudy\top.jpg">
+      <Filter>Resource Files\Textures\Skybox\Day</Filter>
+    </Image>
+    <Image Include="Textures\Skybox_Cloudy\back.jpg">
+      <Filter>Resource Files\Textures\Skybox\Day</Filter>
+    </Image>
+    <Image Include="Textures\Skybox_Cloudy\bottom.jpg">
+      <Filter>Resource Files\Textures\Skybox\Day</Filter>
     </Image>
   </ItemGroup>
 </Project>

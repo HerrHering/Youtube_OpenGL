@@ -1,7 +1,13 @@
 #include"Model.h"
 
-Model::Model(const char* file)
+Model::Model(const char* file, unsigned int instancing, std::vector<glm::mat4> instanceMatrices)
 {
+	// There may be problems if the instance cound and transformation count is not the same
+	if (instancing != 1 && instancing != instanceMatrices.size())
+	{
+		throw std::invalid_argument("The amount of instance objects is not equal to the length of transformation matrices!");
+	}
+
 	// Make a JSON object
 	std::string text = get_file_contents(file);
 	JSON = json::parse(text);
@@ -9,6 +15,9 @@ Model::Model(const char* file)
 	// Get the binary data
 	Model::file = file;
 	data = getData();
+
+	Model::instancing = instancing;
+	Model::instanceMatrices = instanceMatrices;
 
 	// Traverse all nodes
 	traverseNode(0);
@@ -46,7 +55,7 @@ void Model::loadMesh(unsigned int indMesh)
 	std::vector<Texture> textures = getTextures();
 
 	// Combine the vertices, indices, and textures into a mesh
-	meshes.push_back(Mesh(vertices, indices, textures));
+	meshes.push_back(Mesh(vertices, indices, textures, instancing, instanceMatrices));
 }
 
 void Model::traverseNode(unsigned int nextNode, glm::mat4 matrix)
@@ -157,7 +166,7 @@ std::vector<float> Model::getFloats(json accessor)
 	json bufferView = JSON["bufferViews"][buffViewInd];
 	unsigned int byteOffset = bufferView["byteOffset"];
 
-	// Interpret the type and store it into numPerVert
+	// Interpret the type and store it into numPerVert (each ID is associated with a type)
 	unsigned int numPerVert;
 	if (type == "SCALAR") numPerVert = 1;
 	else if (type == "VEC2") numPerVert = 2;

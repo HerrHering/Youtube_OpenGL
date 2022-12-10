@@ -158,6 +158,7 @@
     <ClCompile Include="VBO.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="asteriod.vert" />
     <None Include="default.frag" />
     <None Include="default.geom" />
     <None Include="default.vert" />
@@ -185,12 +186,18 @@
     <Image Include="Textures\planks.png" />
     <Image Include="Textures\planksSpec.png" />
     <Image Include="Textures\pop_cat.png" />
-    <Image Include="Textures\Skybox\back.jpg" />
-    <Image Include="Textures\Skybox\bottom.jpg" />
-    <Image Include="Textures\Skybox\front.jpg" />
-    <Image Include="Textures\Skybox\left.jpg" />
-    <Image Include="Textures\Skybox\right.jpg" />
-    <Image Include="Textures\Skybox\top.jpg" />
+    <Image Include="Textures\Skybox_Cloudy\back.jpg" />
+    <Image Include="Textures\Skybox_Cloudy\bottom.jpg" />
+    <Image Include="Textures\Skybox_Cloudy\front.jpg" />
+    <Image Include="Textures\Skybox_Cloudy\left.jpg" />
+    <Image Include="Textures\Skybox_Cloudy\right.jpg" />
+    <Image Include="Textures\Skybox_Cloudy\top.jpg" />
+    <Image Include="Textures\Skybox_Stars\back.png" />
+    <Image Include="Textures\Skybox_Stars\bottom.png" />
+    <Image Include="Textures\Skybox_Stars\front.png" />
+    <Image Include="Textures\Skybox_Stars\left.png" />
+    <Image Include="Textures\Skybox_Stars\right.png" />
+    <Image Include="Textures\Skybox_Stars\top.png" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -1,13 +1,11 @@
- // https://www.youtube.com/watch?v=45MIykWJ-C4&ab_channel=freeCodeCamp.org
+#include<math.h>
+#include"Model.h"
 
-// Episode: https://youtu.be/crOfyWiWxmc
-// Time: 4:00
 
-#include "Model.h"
+const unsigned int width = 800;
+const unsigned int height = 800;
 
-// Proceduraly draw windows
-const unsigned int windowWidth = 800;
-const unsigned int windowHeight = 800;
+
 
 float skyboxVertices[] =
 {
@@ -44,135 +42,149 @@ unsigned int skyboxIndices[] =
 	6, 2, 3
 };
 
+float randf()
+{
+	return -1.0f + (rand() / (RAND_MAX / 2.0f));
+}
+
 int main()
 {
-#pragma region INITIALIZATION AND BASIC WINDOW SETTINGS
-	// Initialize graphics librari
+	// Initialize GLFW
 	glfwInit();
 
-	// Tell the computer which version we are using (OpenGl 3.3)
-	// Before the dot
+	// Tell GLFW what version of OpenGL we are using 
+	// In this case we are using OpenGL 3.3
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-	// After the dot
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-	// What function package are we using: MODERN<- / COMPATIBILITY
+	// Tell GLFW we are using the CORE profile
+	// So that means we only have the modern functions
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-	// CREATE WINDOW OBJECT
-
-	// Create the window (windowWidth, windowHeight, windowTitle, defaultMonitor, dontShareResources)
-	GLFWwindow* window = glfwCreateWindow(800, 800, "YoutubeOpenGL", NULL, NULL); // By NULL we use the default settings
-	// Check wether the window has been succesfully created
+	// Create a GLFWwindow object of 800 by 800 pixels, naming it "YoutubeOpenGL"
+	GLFWwindow* window = glfwCreateWindow(width, height, "YoutubeOpenGL", NULL, NULL);
+	// Error check if the window fails to create
 	if (window == NULL)
 	{
 		std::cout << "Failed to create GLFW window" << std::endl;
 		glfwTerminate();
 		return -1;
 	}
-
-	// Tells OpenGL that we want to use this window for the context
+	// Introduce the window into the current context
 	glfwMakeContextCurrent(window);
 
-	// Load GLAD so it configures OpenGL
-	// Loads GL functions, headers and other configurations
+	//Load GLAD so it configures OpenGL
 	gladLoadGL();
-
-	// Set viewport coordinates from bottom-left to top-right
-	glViewport(0, 0, windowWidth, windowHeight);
-#pragma endregion
-
+	// Specify the viewport of OpenGL in the Window
+	// In this case the viewport goes from x = 0, y = 0, to x = 800, y = 800
+	glViewport(0, 0, width, height);
 
 
-#pragma region SET UP SCENE
 
-	Shader meshShader("default.vert", "explosion.geom", "default.frag");
-	// Effect: show normals of triangles
-	Shader normalsShader("default.vert", "normals.geom", "normals.frag");
+
+
+	// Generates Shader objects
+	Shader shaderProgram("default.vert", "default.geom", "default.frag");
 	Shader skyboxShader("skybox.vert", "skybox.frag");
+	Shader asteroidShader("asteriod.vert", "default.frag"); // Will be instanced
 
-	glm::vec4 lightColor = glm::vec4(1, 1, 1,	 1);
+	// Take care of all the light related things
+	glm::vec4 lightColor = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
 	glm::vec3 lightPos = glm::vec3(0.5f, 0.5f, 0.5f);
-	glm::mat4 lightModel = glm::mat4(1.0f);
-	lightModel = glm::translate(lightModel, lightPos);
 
-	meshShader.Activate();
-	glUniform4f(glGetUniformLocation(meshShader.ID, "lightColor"), lightColor.x, lightColor.y, lightColor.z, lightColor.w);
-	glUniform3f(glGetUniformLocation(meshShader.ID, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
+	shaderProgram.Activate();
+	glUniform4f(glGetUniformLocation(shaderProgram.ID, "lightColor"), lightColor.x, lightColor.y, lightColor.z, lightColor.w);
+	glUniform3f(glGetUniformLocation(shaderProgram.ID, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
 	skyboxShader.Activate();
-	// 0-th texture unit
 	glUniform1i(glGetUniformLocation(skyboxShader.ID, "skybox"), 0);
+	asteroidShader.Activate();
+	glUniform4f(glGetUniformLocation(asteroidShader.ID, "lightColor"), lightColor.x, lightColor.y, lightColor.z, lightColor.w);
+	glUniform3f(glGetUniformLocation(asteroidShader.ID, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
 
 
-#pragma endregion
 
-#pragma region RENDERING AND WINDOWHANDLING
 
-	Camera camera(windowWidth, windowHeight, glm::vec3(0.0f, 0.0f, 2.0f));
+
+	// Enables the Depth Buffer
+	glEnable(GL_DEPTH_TEST);
+
+	// Enables Cull Facing
+	glEnable(GL_CULL_FACE);
+	// Keeps front faces
+	glCullFace(GL_FRONT);
+	// Uses counter clock-wise standard
+	glFrontFace(GL_CCW);
+
+	// Creates camera object
+	Camera camera(width, height, glm::vec3(0.0f, 0.0f, 2.0f));
 
 	// Load in models
-	Model model("models/statue/scene.gltf");
+	Model jupiter("models/jupiter/scene.gltf");
 
-	// VAO is a wrapper
+
+
+	// Variables to create periodic event for FPS displaying
+	double prevTime = 0.0;
+	double crntTime = 0.0;
+	double timeDiff;
+	// Keeps track of the amount of frames in timeDiff
+	unsigned int counter = 0;
+
+	// Use this to disable VSync (not advized)
+	//glfwSwapInterval(0);
+
+
+	// Create VAO, VBO, and EBO for the skybox
 	unsigned int skyboxVAO, skyboxVBO, skyboxEBO;
 	glGenVertexArrays(1, &skyboxVAO);
 	glGenBuffers(1, &skyboxVBO);
 	glGenBuffers(1, &skyboxEBO);
 	glBindVertexArray(skyboxVAO);
-	// Vertices
 	glBindBuffer(GL_ARRAY_BUFFER, skyboxVBO);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), &skyboxVertices, GL_STATIC_DRAW);
-	// Vertex indices
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, skyboxEBO);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(skyboxIndices), &skyboxIndices, GL_STATIC_DRAW);
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
 	glEnableVertexAttribArray(0);
-	// Unbind buffers
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
-	// Directory of textures we want to use
+
+	// All the faces of the cubemap (make sure they are in this exact order)
 	std::string facesCubemap[6] =
 	{
-		"Textures/Skybox/right.jpg",
-		"Textures/Skybox/left.jpg",
-		"Textures/Skybox/top.jpg",
-		"Textures/Skybox/bottom.jpg",
-		"Textures/Skybox/front.jpg",
-		"Textures/Skybox/back.jpg"
+		"Textures/Skybox_Stars/right.png",
+		"Textures/Skybox_Stars/left.png",
+		"Textures/Skybox_Stars/top.png",
+		"Textures/Skybox_Stars/bottom.png",
+		"Textures/Skybox_Stars/front.png",
+		"Textures/Skybox_Stars/back.png"
 	};
 
-	// ID for the generated cubemap
+	// Creates the cubemap texture object
 	unsigned int cubemapTexture;
 	glGenTextures(1, &cubemapTexture);
-	// Bind the texture ID as a cubemap (that is what we will store in it!)
 	glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	// Texture dimensions: XYZ -> STR
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); // CLAMP EDGES!!!
+	// These are very important to prevent seams
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+	// This might help with seams on some systems
+	//glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 
-	for (unsigned int i = 0; i < 6; ++i)
+	// Cycles through all the textures and attaches them to the cubemap object
+	for (unsigned int i = 0; i < 6; i++)
 	{
 		int width, height, nrChannels;
-		// Desiredchannels = 0 -> automatic
 		unsigned char* data = stbi_load(facesCubemap[i].c_str(), &width, &height, &nrChannels, 0);
 		if (data)
 		{
-			// Cubemaps start at the top left corner so we dont have to flip it!
 			stbi_set_flip_vertically_on_load(false);
 			glTexImage2D
 			(
-				/* Order of sides:
-				  POSITIVE_X = right
-				  NEGATIVE_X = left
-				  POSITIVE_Y = top
-				  NEGATIVE_Y = bottom
-				  POSITIVE_Z = front	<- positive is the front face instead of the back face! we have to match it with our coordinate system later! (in shaders)
-				  NEGATIVE_Z = back*/
-				GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, /*We set here witch side are we talking about*/
+				GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
 				0,
 				GL_RGB,
 				width,
@@ -186,109 +198,146 @@ int main()
 		}
 		else
 		{
-			std::cout << "Falied to load texture: " << facesCubemap[i] << std::endl;
+			std::cout << "Failed to load texture: " << facesCubemap[i] << std::endl;
 			stbi_image_free(data);
 		}
 	}
 
 
-	// FPS COUNTER
-	double prevTime = 0.0;
-	double crntTime = 0.0;
-	double timeDiff;
-	// How many frames in a certain amount of time
-	unsigned int frameCounter = 0;
-	const double frameMeasurementPerSecond = 60;
 
-	// We are in 3D, so we have to know what is furher away (we can't see behind objects)
-	glEnable(GL_DEPTH_TEST);
-	// Default depthbuffer usage: if something has a smaller depth value than the current, it will replace it
-	glDepthFunc(GL_LESS);
+	// The number of asteroids to be created
+	const unsigned int number = 2000;
+	// Radius of circle around which asteroids orbit
+	float radius = 75.0f;
+	// How much ateroids deviate from the radius
+	float radiusDeviation = 25.0f;
 
-	// ONLY draws specified side of triangle
-	glEnable(GL_CULL_FACE);
-	// Draw fornt face
-	glCullFace(GL_FRONT);
-	// Definition of front face: counter clockwise indexing
-	glFrontFace(GL_CCW);
+	std::vector<glm::mat4> instanceMatrices;
 
-	// Processes all incoming events related to our window
-	while (!glfwWindowShouldClose(window))
+	for (unsigned int i = 0; i < number; i++)
 	{
-#pragma region FPS counter
+		// Generates x and y for the function x^2 + y^2 = radius^2 which is a circle
+		float x = randf();
+		float finalRadius = radius + randf() * radiusDeviation;
+		float y = ((rand() % 2) * 2 - 1) * sqrt(1.0f - x * x);
 
-		// The FPS counter runs on a fixed timeinterval
-		crntTime = glfwGetTime();
-		timeDiff = crntTime - prevTime;
-		frameCounter++;
-		if (timeDiff >= 1.0 / frameMeasurementPerSecond)
+		glm::vec3 tempTranslation;
+		glm::quat tempRotation;
+		glm::vec3 tempScale;
+
+		// Makes the random distribution more even
+		if (randf() > 0.5f)
 		{
-			std::string FPS = std::to_string(frameCounter / timeDiff);
-			std::string frameDuration = std::to_string(timeDiff / frameCounter * 1000);
-			std::string newTitle = "YoutubeOpenGL - " + FPS + "FPS / " + frameDuration + "ms";
-			glfwSetWindowTitle(window, newTitle.c_str());
-			frameCounter = 0;
-			prevTime = crntTime;
+			// Generates a translation near a circle of radius "radius"
+			tempTranslation = glm::vec3(y * finalRadius, randf(), x * finalRadius);
+		}
+		else
+		{
+			// Generates a translation near a circle of radius "radius"
+			tempTranslation = glm::vec3(x * finalRadius, randf(), y * finalRadius);
 		}
 
-#pragma endregion
+		// Generates random rotations
+		tempRotation = glm::quat(1.0f, randf(), randf(), randf());
+		// Generates random scales
+		tempScale = 0.1f * glm::vec3(randf(), randf(), randf());
 
-		// Tell GL to clear back buffer with specific color
+		// Calculate transformation matrices for the current instance
+		glm::mat4 trans = glm::mat4(1.0f);
+		glm::mat4 rot = glm::mat4(1.0f);
+		glm::mat4 scale = glm::mat4(1.0f);
+
+		// Construct data
+		trans = glm::translate(trans, tempTranslation);
+		rot = glm::mat4_cast(tempRotation);
+		scale = glm::scale(scale, tempScale);
+
+		// Add final transformation to the list
+		instanceMatrices.push_back(trans * rot * scale);
+	}
+
+	// Construct asteroids using the instance transformations
+	Model asteroid("models/asteroid/scene.gltf", number, instanceMatrices);
+
+	// Main while loop
+	while (!glfwWindowShouldClose(window))
+	{
+		// Updates counter and times
+		crntTime = glfwGetTime();
+		timeDiff = crntTime - prevTime;
+		counter++;
+
+		if (timeDiff >= 1.0 / 30.0)
+		{
+			// Creates new title
+			std::string FPS = std::to_string((1.0 / timeDiff) * counter);
+			std::string ms = std::to_string((timeDiff / counter) * 1000);
+			std::string newTitle = "YoutubeOpenGL - " + FPS + "FPS / " + ms + "ms";
+			glfwSetWindowTitle(window, newTitle.c_str());
+
+			// Resets times and counter
+			prevTime = crntTime;
+			counter = 0;
+
+			// Use this if you have disabled VSync
+			//camera.Inputs(window);
+		}
+
+		// Specify the color of the background
 		glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
-		// Clears COLOR_BUFFER with the previously set clearColor
-		// Clear depth buffer
+		// Clean the back buffer and depth buffer
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		// Camera inputs: moving, rotating...
+		// Handles camera inputs (delete this if you have disabled VSync)
 		camera.Inputs(window);
-		// updates the cameraMatrix
-		camera.updateMatrix(45.0f, 0.1f, 100.0f);
+		// Updates and exports the camera matrix to the Vertex Shader
+		camera.updateMatrix(45.0f, 0.1f, 1000.0f);
 
-		// We want to sync the time with the model
-		model.syncTime = true;
-		// DRAW
-		model.Draw(meshShader, camera);
-		model.Draw(normalsShader, camera); // Show visually the direction of normals of the mesh
 
-		// DRAW SKYBOX
+		// Draw jupiter
+		jupiter.Draw(shaderProgram, camera);
+		// Draw the asteroids
+		asteroid.Draw(asteroidShader, camera); // Instanced draw
+
 		// Since the cubemap will always have a depth of 1.0, we need that equal sign so it doesn't get discarded
 		glDepthFunc(GL_LEQUAL);
 
 		skyboxShader.Activate();
 		glm::mat4 view = glm::mat4(1.0f);
 		glm::mat4 projection = glm::mat4(1.0f);
-		// We scale it back to mat3 then up to mat4, so it doesn't translate anything (4th row and col is 0s)
+		// We make the mat4 into a mat3 and then a mat4 again in order to get rid of the last row and column
+		// The last row and column affect the translation of the skybox (which we don't want to affect)
 		view = glm::mat4(glm::mat3(glm::lookAt(camera.Position, camera.Position + camera.Orientation, camera.Up)));
-		projection = glm::perspective(glm::radians(45.0f), (float)windowWidth / windowHeight, 0.1f, 100.0f);
+		projection = glm::perspective(glm::radians(45.0f), (float)width / height, 0.1f, 100.0f);
 		glUniformMatrix4fv(glGetUniformLocation(skyboxShader.ID, "view"), 1, GL_FALSE, glm::value_ptr(view));
 		glUniformMatrix4fv(glGetUniformLocation(skyboxShader.ID, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
-		// Cubemap
+
+		// Draws the cubemap as the last object so we can save a bit of performance by discarding all fragments
+		// where an object is present (a depth of 1.0f will always fail against any object's depth value)
 		glBindVertexArray(skyboxVAO);
-		glActiveTexture(GL_TEXTURE0); // We are storing to TEXTURE0 in memory whatever we bind here
+		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
-		glDrawElements(GL_TRIANGLES, 3 * 2 * 6, GL_UNSIGNED_INT, 0); // We only have one texture, that is the 0-th in the unit
-		glBindVertexArray(0); // Unbind cubemap
-		
-		glDepthFunc(GL_LESS); // Reset depth buffer func
+		glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+		glBindVertexArray(0);
+
+		// Switch back to the normal depth function
+		glDepthFunc(GL_LESS);
 
 
-		// Swaps the front and back buffers
+		// Swap the back buffer with the front buffer
 		glfwSwapBuffers(window);
-
-		// Processes basic events that we don't want to e.g.: Window close, Window resize, Move window
+		// Take care of all GLFW events
 		glfwPollEvents();
 	}
-#pragma endregion
 
-#pragma region DISMANTLE USED OBJECTS
-	meshShader.Delete();
+
+
+	// Delete all the objects we've created
+	shaderProgram.Delete();
 	skyboxShader.Delete();
-
-	// Destroy the window after we finished using it
+	// Delete window before ending the program
 	glfwDestroyWindow(window);
-	// Terminate graphics librari
+	// Terminate GLFW before ending the program
 	glfwTerminate();
-#pragma endregion
-
 	return 0;
 }

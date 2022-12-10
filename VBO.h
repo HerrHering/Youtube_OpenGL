@@ -19,6 +19,11 @@ class VBO
 public:
 	GLuint ID;
 	VBO(std::vector<Vertex>& vertices);
+	/// <summary>
+	/// Transformations that we want to pass to EACH INSTANCED MESH
+	/// </summary>
+	/// <param name="mat4s">Transformations</param>
+	VBO(std::vector<glm::mat4>& mat4s);
 
 	void Bind();
 	void Unbind();
