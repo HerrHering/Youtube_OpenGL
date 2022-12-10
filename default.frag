@@ -20,7 +20,8 @@ uniform vec4 lightColor;
 uniform vec3 lightPos;
 uniform vec3 camPos;
 
-vec4 PointLight()
+// Phong lighting
+vec4 PointLight_Phong()
 {
 	vec3 lightVec = lightPos - crntPos;
 	float dist = length(lightVec);
@@ -40,6 +41,40 @@ vec4 PointLight()
 	vec3 reflectionDirection = reflect(-lightDirection, normal);
 	// The power tells us how pointy the reflection is (higher power -> smaller point)
 	float specAmount = pow(max(0, dot(viewDirection, reflectionDirection)), 16);
+	float specular = specularLight * specAmount * texture(specular0, texCoord).r;
+
+	return (texture(diffuse0, texCoord) * (ambient + diffuse * inten) + specular * inten) * lightColor;
+}
+
+// Blinn-Phong lighting:
+//		The cosine part of dot product(view*light) can go to negative and thus the specular light will be cut off :(
+//	Solution: Dotproduct between the normal and the HALFWAY vector -> cosine never can be negative -> no cutoff :)
+vec4 PointLight_BlinnPhong()
+{
+	vec3 lightVec = lightPos - crntPos;
+	float dist = length(lightVec);
+	float a = 1.0f; // Light reach
+	float b = 0.04f; // How fast light dies off
+	float inten = 1.0f / (a * dist * dist + b * dist + 1.0f);
+	
+	float ambient = 0.2f;
+
+	vec3 normal = normalize(Normal);
+	vec3 lightDirection = normalize(lightVec);
+	float diffuse = max(0, dot(normal, lightDirection));
+
+	// Max intensity
+	float specularLight = 0.5f;
+	vec3 viewDirection = normalize(camPos - crntPos);
+	vec3 reflectionDirection = reflect(-lightDirection, normal);
+
+	// DIFFERENCE
+	// Vector halfway between the view direction(point->camera) and the reflected light direction(point->reflectiondir.)
+	vec3 halfwayVec = normalize(viewDirection + lightDirection);
+
+	// The power tells us how pointy the reflection is (higher power -> smaller point)
+	//float specAmount = pow(max(0, dot(viewDirection, reflectionDirection)), 16);
+	float specAmount = pow(max(0, dot(normal, halfwayVec)), 16); // Corrigate reflection->no cutoff
 	float specular = specularLight * specAmount * texture(specular0, texCoord).r;
 
 	return (texture(diffuse0, texCoord) * (ambient + diffuse * inten) + specular * inten) * lightColor;

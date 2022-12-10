@@ -55,11 +55,6 @@ unsigned int skyboxIndices[] =
 	6, 2, 3
 };
 
-float randf()
-{
-	return -1.0f + (rand() / (RAND_MAX / 2.0f));
-}
-
 int main()
 {
 	// Initialize GLFW
