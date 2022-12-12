@@ -96,10 +96,11 @@ int main()
 
 
 	// Generates Shader objects
-	Shader shaderProgram("default.vert", "default.geom", "default.frag");
-	Shader skyboxShader("skybox.vert", "skybox.frag");
+	Shader shaderProgram("default.vert", "default.frag");
 
 	Shader framebufferProgram("framebuffer.vert", "framebuffer.frag"); // We will multisample (MSAA)
+
+	Shader shadowMapProgram("shadowMap.vert", "shadowMap.frag");
 
 	// Take care of all the light related things
 	glm::vec4 lightColor = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
@@ -108,8 +109,6 @@ int main()
 	shaderProgram.Activate();
 	glUniform4f(glGetUniformLocation(shaderProgram.ID, "lightColor"), lightColor.x, lightColor.y, lightColor.z, lightColor.w);
 	glUniform3f(glGetUniformLocation(shaderProgram.ID, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
-	skyboxShader.Activate();
-	glUniform1i(glGetUniformLocation(skyboxShader.ID, "skybox"), 0);
 	framebufferProgram.Activate();
 	// We will only have one texture, so we use the 0-th in the batch
 	glUniform1i(glGetUniformLocation(framebufferProgram.ID, "screenTexture"), 0);
@@ -226,6 +225,50 @@ int main()
 
 #pragma endregion
 
+#pragma region ShadowMap FBO
+
+	// A shadow map is a depth map, that only measures how far away things are from the LIGHT'S PERSPECTIVE
+	unsigned int shadowMapFBO;
+	glGenFramebuffers(1, &shadowMapFBO);
+
+	unsigned int shadowMapWidth = 2084, shadowMapHeight = 2084;
+	unsigned int shadowMap;
+	glGenTextures(1, &shadowMap);
+	glBindTexture(GL_TEXTURE_2D, shadowMap);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, shadowMapWidth, shadowMapHeight, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	// Everything that is clamped, isn't part of the view from the light, so we dont want to work with them
+	//--> We set the clamped extra region to 1.0f, so it doesn't pass the shadow test
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+	float clampColor[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+	glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, clampColor);
+
+
+	glBindFramebuffer(GL_FRAMEBUFFER, shadowMapFBO);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, shadowMap, 0);
+	// We don't need the color buffer, only the depth buffer, so we tell OpenGL to not draw or read any color
+	glDrawBuffer(GL_NONE);
+	glReadBuffer(GL_NONE);
+	// Unbind
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+
+	// Matrices, that transform us to the perspective of the light
+	// DIRECTIONAL LIGHT -> parallel rays -> orthographic projection instead of perspective (it would warp the rays)
+	glm::mat4 orthogonalProjection = glm::ortho(-35.0f, 35.0f, -35.0f, 35.0f, 0.1f, 75.0f); // We are looking through the "box" that the ortho defines
+	glm::mat4 lightView = glm::lookAt(20.0f * lightPos, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f)); // Transforms us to the light's perspective
+	glm::mat4 lightProjection = orthogonalProjection * lightView; // This is the way we project the scene from the light's perspective
+
+	// Export uniforms to shader
+	shadowMapProgram.Activate();
+	glUniformMatrix4fv(glGetUniformLocation(shadowMapProgram.ID, "lightProjection"), 1, GL_FALSE, glm::value_ptr(lightProjection));
+
+
+#pragma endregion
+
+
 	// Main while loop
 	while (!glfwWindowShouldClose(window))
 	{
@@ -251,7 +294,20 @@ int main()
 			//camera.Inputs(window);
 		}
 
+		// First we draw the shadow map from the light's perspective
+		glEnable(GL_DEPTH_TEST);
+		glViewport(0, 0, shadowMapWidth, shadowMapHeight); // Size of shadow map
+		glBindFramebuffer(GL_FRAMEBUFFER, shadowMapFBO); // We store data here
+		glClear(GL_DEPTH_BUFFER_BIT); // Clear the depth buffer, because it may differ frame by frame
+		// Draw model for shadow purposes
+		model.Draw(shadowMapProgram, camera);
+		//Unbind
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+
+
+		// Switch back to normal viewport
+		glViewport(0, 0, width, height);
 		// Bind the custom framebuffer
 		glBindFramebuffer(GL_FRAMEBUFFER, FBO); // This will store all our information: color, depth, stencil...
 		// Specify the color of the background
@@ -267,6 +323,14 @@ int main()
 		camera.updateMatrix(45.0f, 0.1f, 1000.0f);
 
 #pragma region DRAW
+
+		// Send the light matrix to the shader
+		shaderProgram.Activate();
+		glUniformMatrix4fv(glGetUniformLocation(shaderProgram.ID, "lightProjection"), 1, GL_FALSE, glm::value_ptr(lightProjection));
+
+		glActiveTexture(GL_TEXTURE0 + 2); // There are already two in the shader: diffuse0, specular0
+		glBindTexture(GL_TEXTURE_2D, shadowMap);
+		glUniform1i(glGetUniformLocation(shaderProgram.ID, "shadowMap"), 2); // The texture with the index of 2
 
 		// Draw model
 		model.Draw(shaderProgram, camera);
@@ -299,7 +363,8 @@ int main()
 
 	// Delete all the objects we've created
 	shaderProgram.Delete();
-	skyboxShader.Delete();
+	framebufferProgram.Delete();
+	shadowMapProgram.Delete();
 	// Delete window before ending the program
 	glfwDestroyWindow(window);
 	// Terminate GLFW before ending the program

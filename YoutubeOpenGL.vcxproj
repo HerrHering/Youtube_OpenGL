@@ -167,6 +167,8 @@
     <None Include="framebuffer.vert" />
     <None Include="normals.frag" />
     <None Include="normals.geom" />
+    <None Include="shadowMap.frag" />
+    <None Include="shadowMap.vert" />
     <None Include="skybox.frag" />
     <None Include="skybox.vert" />
   </ItemGroup>

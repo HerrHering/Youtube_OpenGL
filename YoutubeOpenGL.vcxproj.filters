@@ -98,6 +98,12 @@
     <None Include="asteriod.vert">
       <Filter>Resource Files\Shaders</Filter>
     </None>
+    <None Include="shadowMap.vert">
+      <Filter>Resource Files\Shaders</Filter>
+    </None>
+    <None Include="shadowMap.frag">
+      <Filter>Resource Files\Shaders</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="shaderClass.h">
