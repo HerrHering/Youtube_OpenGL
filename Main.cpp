@@ -1,9 +1,13 @@
+// For further help, search gammaKorrekcio in c++ folder
+
 #include<math.h>
 #include"Model.h"
 
 
 const unsigned int width = 800;
 const unsigned int height = 800;
+
+const float gamma = 2.2f;
 
 // How many times do we want to sample per pixel (MSAA support)
 unsigned int samples = 8;
@@ -109,6 +113,7 @@ int main()
 	framebufferProgram.Activate();
 	// We will only have one texture, so we use the 0-th in the batch
 	glUniform1i(glGetUniformLocation(framebufferProgram.ID, "screenTexture"), 0);
+	glUniform1f(glGetUniformLocation(framebufferProgram.ID, "gamma"), gamma); // Set gamma
 
 
 
@@ -119,6 +124,9 @@ int main()
 
 	// Activate multisampling (MSAA)
 	glEnable(GL_MULTISAMPLE);
+
+	// After we finished making the picture, before rendering, OpenGL will automatically apply gamma correction to all SRGB framebuffers
+	// glEnable(GL_FRAMEBUFFER_SRGB);
 
 	// Enables Cull Facing
 	glEnable(GL_CULL_FACE);
@@ -169,7 +177,8 @@ int main()
 	unsigned int framebufferTexture;
 	glGenTextures(1, &framebufferTexture);
 	glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, framebufferTexture);
-	glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, samples, GL_RGB, width, height, GL_TRUE); // True/False: Do we want the samples in the same place inside pixel?
+	// We are manually transoforming the colors from one gamma value to another, and because of the bad float precision, we have to allocate to it at least 16bits (instead of 8)
+	glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, samples, GL_RGB16F, width, height, GL_TRUE); // True/False: Use always the same locations inside pixel to take samples? (not regarding format or size of the image)
 	glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); // Prevents edge bleeding
@@ -202,7 +211,8 @@ int main()
 	unsigned int postProcessingTexture;
 	glGenTextures(1, &postProcessingTexture);
 	glBindTexture(GL_TEXTURE_2D, postProcessingTexture);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	// We are manually transoforming the colors from one gamma value to another, and because of the bad float precision, we have to allocate to it at least 16bits (instead of 8)
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -213,80 +223,6 @@ int main()
 	fboStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
 	if (fboStatus != GL_FRAMEBUFFER_COMPLETE)
 		std::cout << "Post-Processing Framebuffer error: " << fboStatus << std::endl;
-
-#pragma endregion
-
-#pragma region Skybox
-
-	// Create VAO, VBO, and EBO for the skybox
-	unsigned int skyboxVAO, skyboxVBO, skyboxEBO;
-	glGenVertexArrays(1, &skyboxVAO);
-	glGenBuffers(1, &skyboxVBO);
-	glGenBuffers(1, &skyboxEBO);
-	glBindVertexArray(skyboxVAO);
-	glBindBuffer(GL_ARRAY_BUFFER, skyboxVBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), &skyboxVertices, GL_STATIC_DRAW);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, skyboxEBO);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(skyboxIndices), &skyboxIndices, GL_STATIC_DRAW);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-	glEnableVertexAttribArray(0);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glBindVertexArray(0);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
-
-	// All the faces of the cubemap (make sure they are in this exact order)
-	std::string facesCubemap[6] =
-	{
-		"Textures/Skybox_Day/right.png",
-		"Textures/Skybox_Day/left.png",
-		"Textures/Skybox_Day/top.png",
-		"Textures/Skybox_Day/bottom.png",
-		"Textures/Skybox_Day/front.png",
-		"Textures/Skybox_Day/back.png"
-	};
-
-	// Creates the cubemap texture object
-	unsigned int cubemapTexture;
-	glGenTextures(1, &cubemapTexture);
-	glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	// These are very important to prevent seams
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-	// This might help with seams on some systems
-	//glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
-
-	// Cycles through all the textures and attaches them to the cubemap object
-	for (unsigned int i = 0; i < 6; i++)
-	{
-		int width, height, nrChannels;
-		unsigned char* data = stbi_load(facesCubemap[i].c_str(), &width, &height, &nrChannels, 0);
-		if (data)
-		{
-			stbi_set_flip_vertically_on_load(false);
-			glTexImage2D
-			(
-				GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
-				0,
-				GL_RGB,
-				width,
-				height,
-				0,
-				GL_RGB,
-				GL_UNSIGNED_BYTE,
-				data
-			);
-			stbi_image_free(data);
-		}
-		else
-		{
-			std::cout << "Failed to load texture: " << facesCubemap[i] << std::endl;
-			stbi_image_free(data);
-		}
-	}
 
 #pragma endregion
 
@@ -319,7 +255,7 @@ int main()
 		// Bind the custom framebuffer
 		glBindFramebuffer(GL_FRAMEBUFFER, FBO); // This will store all our information: color, depth, stencil...
 		// Specify the color of the background
-		glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
+		glClearColor(pow(0.07f, gamma), pow(0.13f, gamma), pow(0.17f, gamma), 1.0f); // We are gammacorrecting, bacause of the textures
 		// Clean the back buffer and depth buffer
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		// Enable depth testing
@@ -334,30 +270,6 @@ int main()
 
 		// Draw model
 		model.Draw(shaderProgram, camera);
-
-		// Since the cubemap will always have a depth of 1.0, we need that equal sign so it doesn't get discarded
-		glDepthFunc(GL_LEQUAL);
-
-		skyboxShader.Activate();
-		glm::mat4 view = glm::mat4(1.0f);
-		glm::mat4 projection = glm::mat4(1.0f);
-		// We make the mat4 into a mat3 and then a mat4 again in order to get rid of the last row and column
-		// The last row and column affect the translation of the skybox (which we don't want to affect)
-		view = glm::mat4(glm::mat3(glm::lookAt(camera.Position, camera.Position + camera.Orientation, camera.Up)));
-		projection = glm::perspective(glm::radians(45.0f), (float)width / height, 0.1f, 100.0f);
-		glUniformMatrix4fv(glGetUniformLocation(skyboxShader.ID, "view"), 1, GL_FALSE, glm::value_ptr(view));
-		glUniformMatrix4fv(glGetUniformLocation(skyboxShader.ID, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
-
-		// Draws the cubemap as the last object so we can save a bit of performance by discarding all fragments
-		// where an object is present (a depth of 1.0f will always fail against any object's depth value)
-		glBindVertexArray(skyboxVAO);
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
-		glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
-		glBindVertexArray(0);
-
-		// Switch back to the normal depth function
-		glDepthFunc(GL_LESS);
 
 #pragma endregion
 

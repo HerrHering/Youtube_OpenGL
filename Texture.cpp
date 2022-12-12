@@ -29,21 +29,23 @@ Texture::Texture(const char* image, const char* texType, GLuint slot)
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
 	// (type, 0, texture color, width, height, 0, image color, pixel datatype, pixel data)
+	// texture color : (how do we want to interpret the pixelvalues, in which colorspace)
 	// RGB = Jpeg, RGBA = png
 	// PNG
+	// We want to interpret the pixel colors in the texture as SRGB color space values, so we can linearly calulate and gamma correct them
 	if (numColCh == 4)
 	{
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, widthImg, heightImg, 0, GL_RGBA, GL_UNSIGNED_BYTE, bytes);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_SRGB_ALPHA, widthImg, heightImg, 0, GL_RGBA, GL_UNSIGNED_BYTE, bytes);
 	}
 	// JPEG
 	else if (numColCh == 3)
 	{
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, widthImg, heightImg, 0, GL_RGB, GL_UNSIGNED_BYTE, bytes);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_SRGB, widthImg, heightImg, 0, GL_RGB, GL_UNSIGNED_BYTE, bytes);
 	}
 	// GRAYSCALED
 	else if (numColCh == 1)
 	{
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, widthImg, heightImg, 0, GL_RED, GL_UNSIGNED_BYTE, bytes);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_SRGB, widthImg, heightImg, 0, GL_RED, GL_UNSIGNED_BYTE, bytes);
 	}
 	else
 		throw std::invalid_argument("Automatic Texture type recognition failed!");
