@@ -20,7 +20,7 @@ private:
 public:
 	GLuint ID;
 	Shader(const char* vertexFile, const char* fragmentFile);
-	Shader(const char* vertexFile, const char* fragmentFile, const char* geometryFile);
+	Shader(const char* vertexFile, const char* geometryFile, const char* fragmentFile);
 
 	void Activate();
 	void Delete();
