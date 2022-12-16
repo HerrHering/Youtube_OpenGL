@@ -188,6 +188,8 @@
   </ItemGroup>
   <ItemGroup>
     <Image Include="Textures\brick.png" />
+    <Image Include="Textures\diffuse.png" />
+    <Image Include="Textures\normal.png" />
     <Image Include="Textures\planks.png" />
     <Image Include="Textures\planksSpec.png" />
     <Image Include="Textures\pop_cat.png" />

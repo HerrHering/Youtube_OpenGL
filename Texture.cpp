@@ -33,7 +33,14 @@ Texture::Texture(const char* image, const char* texType, GLuint slot)
 	// RGB = Jpeg, RGBA = png
 	// PNG
 	// We want to interpret the pixel colors in the texture as SRGB color space values, so we can linearly calulate and gamma correct them
-	if (numColCh == 4)
+	// NORMAL
+	if (type == "normal")
+	{
+		// Load them as RGB not as SRGB, beacause it isn't a color so no gamma correction!
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, widthImg, heightImg, 0, GL_RGBA, GL_UNSIGNED_BYTE, bytes);
+	}
+	// PNG
+	else if (numColCh == 4)
 	{
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_SRGB_ALPHA, widthImg, heightImg, 0, GL_RGBA, GL_UNSIGNED_BYTE, bytes);
 	}

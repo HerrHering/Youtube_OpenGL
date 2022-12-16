@@ -1,16 +1,15 @@
-// For further help, search gammaKorrekcio in c++ folder
-
-#include<math.h>
 #include"Model.h"
 
 
 const unsigned int width = 800;
 const unsigned int height = 800;
 
-const float gamma = 2.2f;
-
-// How many times do we want to sample per pixel (MSAA support)
+// Number of samples per pixel for MSAA
 unsigned int samples = 8;
+
+// Controls the gamma function
+float gamma = 2.2f;
+
 
 float rectangleVertices[] =
 {
@@ -24,6 +23,22 @@ float rectangleVertices[] =
 	-1.0f,  1.0f,  0.0f, 1.0f
 };
 
+// Vertices for plane with texture
+std::vector<Vertex> vertices =
+{
+	Vertex{glm::vec3(-1.0f, 0.0f, 1.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec2(0.0f, 0.0f)},
+	Vertex{glm::vec3(-1.0f, 0.0f, -1.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec2(0.0f, 1.0f)},
+	Vertex{glm::vec3(1.0f, 0.0f, -1.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec2(1.0f, 1.0f)},
+	Vertex{glm::vec3(1.0f, 0.0f, 1.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec2(1.0f, 0.0f)}
+};
+
+// Indices for plane with texture
+std::vector<GLuint> indices =
+{
+	0, 1, 2,
+	0, 2, 3
+};
+
 int main()
 {
 	// Initialize GLFW
@@ -33,7 +48,8 @@ int main()
 	// In this case we are using OpenGL 3.3
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-	//glfwWindowHint(GLFW_SAMPLES, samples); // Multisampling pixels (MSAA) // If you don't have a frame buffer
+	// Only use this if you don't have a framebuffer
+	//glfwWindowHint(GLFW_SAMPLES, samples);
 	// Tell GLFW we are using the CORE profile
 	// So that means we only have the modern functions
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
@@ -60,27 +76,20 @@ int main()
 
 
 
-	// Generates Shader objects
-	Shader shaderProgram("default.vert", "default.frag");
-
-	Shader framebufferProgram("framebuffer.vert", "framebuffer.frag"); // We will multisample (MSAA)
-
-	//Shader shadowMapProgram("shadowMap.vert", "shadowMap.frag");
-
-	Shader shadowCubeMapProgram("shadowCubeMap.vert", "shadowCubeMap.geom", "shadowCubeMap.frag");
+	// Generates shaders
+	Shader shaderProgram("default.vert", "default.geom", "default.frag");
+	Shader framebufferProgram("framebuffer.vert", "framebuffer.frag");
 
 	// Take care of all the light related things
 	glm::vec4 lightColor = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
-	glm::vec3 lightPos = glm::vec3(0, 10, 0);
+	glm::vec3 lightPos = glm::vec3(0.5f, 0.5f, 0.5f);
 
 	shaderProgram.Activate();
 	glUniform4f(glGetUniformLocation(shaderProgram.ID, "lightColor"), lightColor.x, lightColor.y, lightColor.z, lightColor.w);
 	glUniform3f(glGetUniformLocation(shaderProgram.ID, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
 	framebufferProgram.Activate();
-	// We will only have one texture, so we use the 0-th in the batch
 	glUniform1i(glGetUniformLocation(framebufferProgram.ID, "screenTexture"), 0);
-	glUniform1f(glGetUniformLocation(framebufferProgram.ID, "gamma"), gamma); // Set gamma
-
+	glUniform1f(glGetUniformLocation(framebufferProgram.ID, "gamma"), gamma);
 
 
 
@@ -88,11 +97,8 @@ int main()
 	// Enables the Depth Buffer
 	glEnable(GL_DEPTH_TEST);
 
-	// Activate multisampling (MSAA)
+	// Enables Multisampling
 	glEnable(GL_MULTISAMPLE);
-
-	// After we finished making the picture, before rendering, OpenGL will automatically apply gamma correction to all SRGB framebuffers
-	// glEnable(GL_FRAMEBUFFER_SRGB);
 
 	// Enables Cull Facing
 	glEnable(GL_CULL_FACE);
@@ -101,12 +107,22 @@ int main()
 	// Uses counter clock-wise standard
 	glFrontFace(GL_CCW);
 
+
 	// Creates camera object
 	Camera camera(width, height, glm::vec3(0.0f, 0.0f, 2.0f));
 
-	// Load in models
-	Model trees("models/trees/scene.gltf");
-	Model ground("models/ground/scene.gltf");
+
+	// Prepare framebuffer rectangle VBO and VAO
+	unsigned int rectVAO, rectVBO;
+	glGenVertexArrays(1, &rectVAO);
+	glGenBuffers(1, &rectVBO);
+	glBindVertexArray(rectVAO);
+	glBindBuffer(GL_ARRAY_BUFFER, rectVBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(rectangleVertices), &rectangleVertices, GL_STATIC_DRAW);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
 
 
 
@@ -121,20 +137,7 @@ int main()
 	//glfwSwapInterval(0);
 
 
-#pragma region FBO
-
-	// Prepare framebuffer rectangle VBO and VAO
-	unsigned int rectVAO, rectVBO;
-	glGenVertexArrays(1, &rectVAO);
-	glGenBuffers(1, &rectVBO);
-	glBindVertexArray(rectVAO);
-	glBindBuffer(GL_ARRAY_BUFFER, rectVBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(rectangleVertices), &rectangleVertices, GL_STATIC_DRAW);
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
-	glEnableVertexAttribArray(1);
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
-
+	// Create Frame Buffer Object
 	unsigned int FBO;
 	glGenFramebuffers(1, &FBO);
 	glBindFramebuffer(GL_FRAMEBUFFER, FBO);
@@ -163,10 +166,6 @@ int main()
 	if (fboStatus != GL_FRAMEBUFFER_COMPLETE)
 		std::cout << "Framebuffer error: " << fboStatus << std::endl;
 
-#pragma endregion
-
-#pragma region postprocessing FBO
-
 	// Create Frame Buffer Object
 	unsigned int postProcessingFBO;
 	glGenFramebuffers(1, &postProcessingFBO);
@@ -176,7 +175,6 @@ int main()
 	unsigned int postProcessingTexture;
 	glGenTextures(1, &postProcessingTexture);
 	glBindTexture(GL_TEXTURE_2D, postProcessingTexture);
-	// We are manually transoforming the colors from one gamma value to another, and because of the bad float precision, we have to allocate to it at least 16bits (instead of 8)
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -189,131 +187,17 @@ int main()
 	if (fboStatus != GL_FRAMEBUFFER_COMPLETE)
 		std::cout << "Post-Processing Framebuffer error: " << fboStatus << std::endl;
 
-#pragma endregion
-
-	unsigned int shadowMapWidth = 2084, shadowMapHeight = 2084;
-	float farPlane = 100.0f;
-
-#pragma region ShadowMap FBO
-
-	//// A shadow map is a depth map, that only measures how far away things are from the LIGHT'S PERSPECTIVE
-	//unsigned int shadowMapFBO;
-	//glGenFramebuffers(1, &shadowMapFBO);
-
-	//unsigned int shadowMap;
-	//glGenTextures(1, &shadowMap);
-	//glBindTexture(GL_TEXTURE_2D, shadowMap);
-	//glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, shadowMapWidth, shadowMapHeight, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
-	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	//// Everything that is clamped, isn't part of the view from the light, so we dont want to work with them
-	////--> We set the clamped extra region to 1.0f, so it doesn't pass the shadow test
-	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-	//float clampColor[] = { 1.0f, 1.0f, 1.0f, 1.0f };
-	//glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, clampColor);
-
-
-	//glBindFramebuffer(GL_FRAMEBUFFER, shadowMapFBO);
-	//glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, shadowMap, 0);
-	//// We don't need the color buffer, only the depth buffer, so we tell OpenGL to not draw or read any color
-	//glDrawBuffer(GL_NONE);
-	//glReadBuffer(GL_NONE);
-	//// Unbind
-	//glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-
-#pragma region DIRECTIONAL
-
-	//// The first option is for directional light
-	//// DIRECTIONAL LIGHT -> parallel rays -> orthographic projection instead of perspective (it would warp the parallel rays)
-	//glm::mat4 orthogonalProjection = glm::ortho(-35.0f, 35.0f, -35.0f, 35.0f, 0.1f, farPlane); // We are looking through the "box" that the ortho defines
-	//// We want to simulate parallel rays so we place the lihtPos further away
-	//glm::mat4 lightView = glm::lookAt(20.0f * lightPos, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f)); // Transforms us to the light's perspective
-	//glm::mat4 lightProjection = orthogonalProjection * lightView; // This is the way we project the scene from the light's perspective
-
-	//// Export uniforms to shader
-	//shadowMapProgram.Activate();
-	//glUniformMatrix4fv(glGetUniformLocation(shadowMapProgram.ID, "lightProjection"), 1, GL_FALSE, glm::value_ptr(lightProjection));
-
-#pragma endregion
-
-#pragma region SPOTLIGHT
-
-	//// The second option is for spot and point ligh
-	//// NOT DIRECTIONAL LIGHT -> NOT parallel rays -> perspective projection should be used (because the rays are kind of "perspective")
-	//glm::mat4 perspectiveProjection = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, farPlane);
-	//glm::mat4 lightView = glm::lookAt(lightPos, glm::vec3(0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-	//glm::mat4 lightProjection = perspectiveProjection * lightView;
-
-	//// Export uniforms to shader
-	//shadowMapProgram.Activate();
-	//glUniformMatrix4fv(glGetUniformLocation(shadowMapProgram.ID, "lightProjection"), 1, GL_FALSE, glm::value_ptr(lightProjection));
-
-#pragma endregion
-
-
-
-#pragma endregion
-
-#pragma region POINTLIGHT
-
-	glm::mat4 perspectiveProjection = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, farPlane);
-	glm::mat4 lightView = glm::lookAt(lightPos, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-	glm::mat4 lightProjection = perspectiveProjection * lightView;
-
-	// We could use 6 spotlights for each side of the cube to get an all around shadow map but it is inefficient
-	// so we are going to use a cubemap instead
-
-	// Framebuffer for Cubemap Shadow Map
-	unsigned int pointShadowMapFBO;
-	glGenFramebuffers(1, &pointShadowMapFBO);
-
-	// Texture for Cubemap Shadow Map FBO
-	unsigned int depthCubemap;
-	glGenTextures(1, &depthCubemap);
-
-	glBindTexture(GL_TEXTURE_CUBE_MAP, depthCubemap);
-	for (unsigned int i = 0; i < 6; ++i)
-		glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_DEPTH_COMPONENT,
-			shadowMapWidth, shadowMapHeight, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-
-	glBindFramebuffer(GL_FRAMEBUFFER, pointShadowMapFBO);
-	glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, depthCubemap, 0);
-	glDrawBuffer(GL_NONE);
-	glReadBuffer(GL_NONE);
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-	// Matrices needed for the light's perspective on all faces of the cubemap
-	glm::mat4 shadowProj = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, farPlane);
-	glm::mat4 shadowTransforms[] =
+	std::vector<Texture> textures =
 	{
-		// The up wector can't be parallel to the view dir!
-		// We oriantate the up vectors in a way s.t. we always get a left handed coordinate system
-	shadowProj * glm::lookAt(lightPos, lightPos + glm::vec3(1.0, 0.0, 0.0), glm::vec3(0.0, -1.0, 0.0)),
-	shadowProj * glm::lookAt(lightPos, lightPos + glm::vec3(-1.0, 0.0, 0.0), glm::vec3(0.0, -1.0, 0.0)),
-	shadowProj * glm::lookAt(lightPos, lightPos + glm::vec3(0.0, 1.0, 0.0), glm::vec3(0.0, 0.0, 1.0)),
-	shadowProj * glm::lookAt(lightPos, lightPos + glm::vec3(0.0, -1.0, 0.0), glm::vec3(0.0, 0.0, -1.0)),
-	shadowProj * glm::lookAt(lightPos, lightPos + glm::vec3(0.0, 0.0, 1.0), glm::vec3(0.0, -1.0, 0.0)),
-	shadowProj * glm::lookAt(lightPos, lightPos + glm::vec3(0.0, 0.0, -1.0), glm::vec3(0.0, -1.0, 0.0))
+		Texture("Textures/diffuse.png", "diffuse", 0)
 	};
-	// Export all matrices to shader
-	shadowCubeMapProgram.Activate();
-	glUniformMatrix4fv(glGetUniformLocation(shadowCubeMapProgram.ID, "shadowMatrices[0]"), 1, GL_FALSE, glm::value_ptr(shadowTransforms[0]));
-	glUniformMatrix4fv(glGetUniformLocation(shadowCubeMapProgram.ID, "shadowMatrices[1]"), 1, GL_FALSE, glm::value_ptr(shadowTransforms[1]));
-	glUniformMatrix4fv(glGetUniformLocation(shadowCubeMapProgram.ID, "shadowMatrices[2]"), 1, GL_FALSE, glm::value_ptr(shadowTransforms[2]));
-	glUniformMatrix4fv(glGetUniformLocation(shadowCubeMapProgram.ID, "shadowMatrices[3]"), 1, GL_FALSE, glm::value_ptr(shadowTransforms[3]));
-	glUniformMatrix4fv(glGetUniformLocation(shadowCubeMapProgram.ID, "shadowMatrices[4]"), 1, GL_FALSE, glm::value_ptr(shadowTransforms[4]));
-	glUniformMatrix4fv(glGetUniformLocation(shadowCubeMapProgram.ID, "shadowMatrices[5]"), 1, GL_FALSE, glm::value_ptr(shadowTransforms[5]));
-	glUniform3f(glGetUniformLocation(shadowCubeMapProgram.ID, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
-	glUniform1f(glGetUniformLocation(shadowCubeMapProgram.ID, "farPlane"), farPlane);
 
-#pragma endregion
+	// Plane with the texture
+	Mesh plane(vertices, indices, textures);
+	// Normal map for the plane
+	Texture normalMap("Textures/normal.png", "normal", 1);
+
+
 
 	// Main while loop
 	while (!glfwWindowShouldClose(window))
@@ -340,32 +224,6 @@ int main()
 		}
 
 
-		// Depth testing needed for Shadow Map
-		glEnable(GL_DEPTH_TEST);
-
-		// Preparations for the Shadow Map
-		glViewport(0, 0, shadowMapWidth, shadowMapHeight);
-		// Commented code is for Spotlights and Directional Lights
-		//glBindFramebuffer(GL_FRAMEBUFFER, shadowMapFBO);
-		//glClear(GL_DEPTH_BUFFER_BIT);
-
-		//// Draw scene for shadow map
-		//ground.Draw(shadowMapProgram, camera);
-		//trees.Draw(shadowMapProgram, camera);
-
-		// Code for Point Lights
-		glBindFramebuffer(GL_FRAMEBUFFER, pointShadowMapFBO);
-		glClear(GL_DEPTH_BUFFER_BIT);
-
-		// Draw scene for shadow map
-		ground.Draw(shadowCubeMapProgram, camera);
-		trees.Draw(shadowCubeMapProgram, camera);
-
-
-		// Switch back to the default framebuffer
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		// Switch back to the default viewport
-		glViewport(0, 0, width, height);
 		// Bind the custom framebuffer
 		glBindFramebuffer(GL_FRAMEBUFFER, FBO);
 		// Specify the color of the background
@@ -378,27 +236,15 @@ int main()
 		// Handles camera inputs (delete this if you have disabled VSync)
 		camera.Inputs(window);
 		// Updates and exports the camera matrix to the Vertex Shader
-		camera.updateMatrix(45.0f, 0.1f, farPlane);
+		camera.updateMatrix(45.0f, 0.1f, 100.0f);
 
 
-		// Send the light matrix to the shader
 		shaderProgram.Activate();
-		glUniformMatrix4fv(glGetUniformLocation(shaderProgram.ID, "lightProjection"), 1, GL_FALSE, glm::value_ptr(lightProjection));
-		glUniform1f(glGetUniformLocation(shaderProgram.ID, "farPlane"), farPlane);
-
-		// Bind the Shadow Map
-		/*glActiveTexture(GL_TEXTURE0 + 2);
-		glBindTexture(GL_TEXTURE_2D, shadowMap);
-		glUniform1i(glGetUniformLocation(shaderProgram.ID, "shadowMap"), 2);*/
-
-		// Bind the Cubemap Shadow Map
-		glActiveTexture(GL_TEXTURE0 + 2);
-		glBindTexture(GL_TEXTURE_CUBE_MAP, depthCubemap);
-		glUniform1i(glGetUniformLocation(shaderProgram.ID, "shadowCubeMap"), 2);
+		normalMap.Bind();
+		glUniform1i(glGetUniformLocation(shaderProgram.ID, "normal0"), 1);
 
 		// Draw the normal model
-		ground.Draw(shaderProgram, camera);
-		trees.Draw(shaderProgram, camera);
+		plane.Draw(shaderProgram, camera);
 
 		// Make it so the multisampling FBO is read while the post-processing FBO is drawn
 		glBindFramebuffer(GL_READ_FRAMEBUFFER, FBO);
@@ -413,7 +259,6 @@ int main()
 		framebufferProgram.Activate();
 		glBindVertexArray(rectVAO);
 		glDisable(GL_DEPTH_TEST); // prevents framebuffer rectangle from being discarded
-		glActiveTexture(GL_TEXTURE0 + 0);
 		glBindTexture(GL_TEXTURE_2D, postProcessingTexture);
 		glDrawArrays(GL_TRIANGLES, 0, 6);
 
@@ -428,8 +273,6 @@ int main()
 
 	// Delete all the objects we've created
 	shaderProgram.Delete();
-	framebufferProgram.Delete();
-	//shadowMapProgram.Delete();
 	glDeleteFramebuffers(1, &FBO);
 	glDeleteFramebuffers(1, &postProcessingFBO);
 	// Delete window before ending the program
@@ -437,4 +280,4 @@ int main()
 	// Terminate GLFW before ending the program
 	glfwTerminate();
 	return 0;
-} // OWN
+}
