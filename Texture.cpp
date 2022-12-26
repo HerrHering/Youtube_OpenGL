@@ -39,6 +39,16 @@ Texture::Texture(const char* image, const char* texType, GLuint slot)
 		// Load them as RGB not as SRGB, beacause it isn't a color so no gamma correction!
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, widthImg, heightImg, 0, GL_RGBA, GL_UNSIGNED_BYTE, bytes);
 	}
+	// Heightmap textures: Parallax Occlusion
+	else if (type == "displacement")
+	{
+		// Load them as RGB not as SRGB, beacause it isn't a color so no gamma correction!
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, widthImg, heightImg, 0, GL_RGBA, GL_UNSIGNED_BYTE, bytes);
+
+		// Overwrite this one specific case
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	}
 	// PNG
 	else if (numColCh == 4)
 	{

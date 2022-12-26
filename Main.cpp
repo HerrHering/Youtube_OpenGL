@@ -1,3 +1,5 @@
+//https://www.youtube.com/watch?v=LrnE5f3h2SU&list=PLPaoO-vpZnumdcb4tZc4x5Q-v7CkrQ6M-&index=31&ab_channel=VictorGordan
+
 #include"Model.h"
 
 
@@ -196,6 +198,7 @@ int main()
 	Mesh plane(vertices, indices, textures);
 	// Normal map for the plane
 	Texture normalMap("Textures/normal.png", "normal", 1);
+	Texture displacementMap("Textures/displacement.png", "displacement", 2);
 
 
 
@@ -242,6 +245,8 @@ int main()
 		shaderProgram.Activate();
 		normalMap.Bind();
 		glUniform1i(glGetUniformLocation(shaderProgram.ID, "normal0"), 1);
+		displacementMap.Bind();
+		glUniform1i(glGetUniformLocation(shaderProgram.ID, "displacement0"), 2);
 
 		// Draw the normal model
 		plane.Draw(shaderProgram, camera);
