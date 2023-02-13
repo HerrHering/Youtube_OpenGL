@@ -83,7 +83,7 @@ int main()
 	Shader framebufferProgram("framebuffer.vert", "framebuffer.frag");
 
 	// Take care of all the light related things
-	glm::vec4 lightColor = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
+	glm::vec4 lightColor = glm::vec4(100.0f, 100.0f, 100.0f, 1.0f);
 	glm::vec3 lightPos = glm::vec3(0.5f, 0.5f, 0.5f);
 
 	shaderProgram.Activate();
@@ -148,6 +148,7 @@ int main()
 	unsigned int framebufferTexture;
 	glGenTextures(1, &framebufferTexture);
 	glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, framebufferTexture);
+	//															16F / 32F for HDR
 	glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, samples, GL_RGB16F, width, height, GL_TRUE);
 	glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
