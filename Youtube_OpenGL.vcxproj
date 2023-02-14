@@ -152,6 +152,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <None Include="asteriod.vert" />
+    <None Include="blur.frag" />
     <None Include="default.frag" />
     <None Include="default.geom" />
     <None Include="default.vert" />
@@ -184,12 +185,18 @@
   <ItemGroup>
     <ClInclude Include="Camera.h" />
     <ClInclude Include="EBO.h" />
+    <ClInclude Include="Libraries\include\stb\stb_image.h" />
     <ClInclude Include="Mesh.h" />
     <ClInclude Include="Model.h" />
     <ClInclude Include="shaderClass.h" />
     <ClInclude Include="Texture.h" />
     <ClInclude Include="VAO.h" />
     <ClInclude Include="VBO.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="Textures\bloomDiffuse.png" />
+    <Image Include="Textures\bloomDisplacement.png" />
+    <Image Include="Textures\bloomNormal.png" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

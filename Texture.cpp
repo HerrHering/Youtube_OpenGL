@@ -43,7 +43,10 @@ Texture::Texture(const char* image, const char* texType, GLuint slot)
 	else if (type == "displacement")
 	{
 		// Load them as RGB not as SRGB, beacause it isn't a color so no gamma correction!
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, widthImg, heightImg, 0, GL_RGBA, GL_UNSIGNED_BYTE, bytes);
+		// ERROR: this has to be loaded from a grayscaled image, so instead of loading from GL_RGBA, we simply load from GL_RGB!!!
+		//	Thus: internal format === opengl texture format === GL_RED (at least in this case)
+		//	AND: format === source texture format === GL_RED (when displacement map) AND NOT FUCKING GL_RGBA... xDD
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, widthImg, heightImg, 0, GL_RED, GL_UNSIGNED_BYTE, bytes);
 
 		// Overwrite this one specific case
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);

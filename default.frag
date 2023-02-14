@@ -1,7 +1,8 @@
 #version 330 core
 
 // Outputs colors in RGBA
-out vec4 FragColor;
+layout (location = 0) out vec4 FragColor;
+layout (location = 1) out vec4 BloomColor;
 
 // Imports the current position from the Vertex Shader
 in vec3 crntPos;
@@ -167,4 +168,16 @@ void main()
 {
 	// outputs final color
 	FragColor = pointLight();
+
+	// Highlight the red parts, because in the image we are using red=lava -> bright
+	if (FragColor.r > 0.05f)
+		FragColor.r *= 5.0f;
+
+	// The brightness of the current pixel (grayscaled value)
+	float brightness = dot(FragColor.rgb, vec3(0.2126f, 0.7152f, 0.0722f));
+	// If it is "bright enough", it will shine! (= bloom!)
+	if (brightness > 0.15f)
+		BloomColor = vec4(FragColor.rgb, 1.0f);
+	else
+		BloomColor = vec4(0.0f, 0.0f, 0.0f, 1.0f);
 }
