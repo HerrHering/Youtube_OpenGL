@@ -26,7 +26,7 @@ void Camera::Matrix(Shader& shader, const char* uniform)
 	glUniformMatrix4fv(glGetUniformLocation(shader.ID, uniform), 1, GL_FALSE, glm::value_ptr(cameraMatrix));
 }
 
-void Camera::Inputs(GLFWwindow* window)
+void Camera::KeyboardInputs(GLFWwindow* window)
 {
 	// WASD
 	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
@@ -67,7 +67,10 @@ void Camera::Inputs(GLFWwindow* window)
 	{
 		speed = 0.1f;
 	}
+}
 
+void Camera::MouseInputs(GLFWwindow* window)
+{
 	// TURN
 	if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
 	{

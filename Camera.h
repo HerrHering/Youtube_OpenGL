@@ -32,7 +32,8 @@ public:
 
 	void updateMatrix(float FOVdeg, float nearPlane, float farPlane);
 	void Matrix(Shader& shader, const char* uniform);
-	void Inputs(GLFWwindow* window);
+	void KeyboardInputs(GLFWwindow* window);
+	void MouseInputs(GLFWwindow* window);
 };
 
 #endif

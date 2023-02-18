@@ -1,3 +1,7 @@
+#include "imgui/imgui.h"
+#include "imgui/imgui_impl_glfw.h"
+#include "imgui/imgui_impl_opengl3.h"
+
 //https://www.youtube.com/watch?v=LrnE5f3h2SU&list=PLPaoO-vpZnumdcb4tZc4x5Q-v7CkrQ6M-&index=31&ab_channel=VictorGordan
 
 #include"Model.h"
@@ -80,17 +84,25 @@ int main()
 
 
 	// Generates shaders
-	Shader shaderProgram("default.vert", "default.geom", "default.frag");
+	Shader shaderProgram("PBR.vert", "PBR.geom", "PBR.frag");
 	Shader framebufferProgram("framebuffer.vert", "framebuffer.frag");
 	Shader blurProgram("framebuffer.vert", "blur.frag");
 
 	// Take care of all the light related things, HDR so it can go above 1.0f!!!
-	glm::vec4 lightColor = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
+	glm::vec3 lightColor = glm::vec3(1.0f, 1.0f, 1.0f);
 	glm::vec3 lightPos = glm::vec3(0.5f, 0.5f, 0.5f);
 
 	shaderProgram.Activate();
-	glUniform4f(glGetUniformLocation(shaderProgram.ID, "lightColor"), lightColor.x, lightColor.y, lightColor.z, lightColor.w);
 	glUniform3f(glGetUniformLocation(shaderProgram.ID, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
+	glUniform3f(glGetUniformLocation(shaderProgram.ID, "lightColor"), lightColor.x, lightColor.y, lightColor.z);
+	float meshEmissivity[3] = { 0.007f, 0, 0.007f };
+	glUniform3f(glGetUniformLocation(shaderProgram.ID, "meshEmissivity"), meshEmissivity[0], meshEmissivity[1], meshEmissivity[2]);
+	float roughness = 2.0f;
+	glUniform1f(glGetUniformLocation(shaderProgram.ID, "roughness"), roughness);
+	float baseReflectance[3] = { 0.5f, 1, 0.0f };
+	glUniform3f(glGetUniformLocation(shaderProgram.ID, "baseReflectance"), baseReflectance[0], baseReflectance[1], baseReflectance[2]);
+	float metallic = 0.0f;
+	glUniform1f(glGetUniformLocation(shaderProgram.ID, "metallic"), metallic);
 	framebufferProgram.Activate();
 	glUniform1i(glGetUniformLocation(framebufferProgram.ID, "screenTexture"), 0);
 	glUniform1i(glGetUniformLocation(framebufferProgram.ID, "bloomTexture"), 1);
@@ -214,6 +226,19 @@ int main()
 	Texture normalMap("Textures/bloomNormal.png", "normal", 1);
 	Texture displacementMap("Textures/bloomDisplacement.png", "displacement", 2);
 
+#pragma region Set up ImGui
+
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	// Variable for inputs and outputs
+	ImGuiIO& io = ImGui::GetIO(); (void)io;
+	// Color scheme of the gui
+	ImGui::StyleColorsDark();
+	ImGui_ImplGlfw_InitForOpenGL(window, true);
+	ImGui_ImplOpenGL3_Init("#version 330");
+
+#pragma endregion
+
 
 
 	// Main while loop
@@ -247,11 +272,22 @@ int main()
 		glClearColor(pow(0.07f, gamma), pow(0.13f, gamma), pow(0.17f, gamma), 1.0f);
 		// Clean the back buffer and depth buffer
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		// GUI Debug stuff frame setup
+		ImGui_ImplOpenGL3_NewFrame();
+		ImGui_ImplGlfw_NewFrame();
+		ImGui::NewFrame();
+
 		// Enable depth testing since it's disabled when drawing the framebuffer rectangle
 		glEnable(GL_DEPTH_TEST);
 
 		// Handles camera inputs (delete this if you have disabled VSync)
-		camera.Inputs(window);
+		if (!io.WantCaptureMouse)
+		{
+			// Mouse input here
+			camera.MouseInputs(window);
+		}
+		camera.KeyboardInputs(window);
 		// Updates and exports the camera matrix to the Vertex Shader
 		camera.updateMatrix(45.0f, 0.1f, 100.0f);
 
@@ -316,13 +352,33 @@ int main()
 		glDrawArrays(GL_TRIANGLES, 0, 6);
 
 
+		// Draw GUI
+		ImGui::Begin("Test values");
+		ImGui::SliderFloat("Roughness", &roughness, 0, 5);
+		ImGui::SliderFloat("Metallic", &metallic, 0, 1);
+		ImGui::SliderFloat3("Mesh Emissivity", meshEmissivity, 0, 1);
+		ImGui::SliderFloat3("Base Reflectance", baseReflectance, 0, 1);
+		ImGui::End();
+		// Update values set by the user
+		shaderProgram.Activate();
+		glUniform3f(glGetUniformLocation(shaderProgram.ID, "meshEmissivity"), meshEmissivity[0], meshEmissivity[1], meshEmissivity[2]);
+		glUniform1f(glGetUniformLocation(shaderProgram.ID, "roughness"), roughness);
+		glUniform3f(glGetUniformLocation(shaderProgram.ID, "baseReflectance"), baseReflectance[0], baseReflectance[1], baseReflectance[2]);
+		glUniform1f(glGetUniformLocation(shaderProgram.ID, "metallic"), metallic);
+
+		// Draw UI window contents
+		ImGui::Render();
+		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
 		// Swap the back buffer with the front buffer
 		glfwSwapBuffers(window);
 		// Take care of all GLFW events
 		glfwPollEvents();
 	}
 
-
+	// Finish the ImGui processes
+	ImGui_ImplOpenGL3_Shutdown();
+	ImGui_ImplGlfw_Shutdown();
 
 	// Delete all the objects we've created
 	shaderProgram.Delete();
